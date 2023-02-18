@@ -1,4 +1,5 @@
 #include "Socket.h"
+#include "ExceptionHandler.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,18 +9,27 @@ int main(int argc, char *argv[]) {
     struct addrinfo hints, *address;
     int state;
     memset(&hints, 0, sizeof(hints));
-    // support both ipv4 and ipv6
+    // support ipv4 and ipv6， tcp stream socket， fill in self-ip
     hints.ai_family = AF_UNSPEC;
-    // tcp stream socket
     hints.ai_socktype = SOCK_STREAM;
-    // fill in my ip
     hints.ai_flags = AI_PASSIVE;
-    //todo: should use "http" port
-    if ((state = getaddrinfo(NULL, "8080", &hints, &address)) != 0) {
-        perror("cannot get hostname correctly");
-        exit(EXIT_FAILURE);
-    }  
-    Socket skt(address);
+    try {
+        // todo: should use "http" port
+        if ((state = getaddrinfo(NULL, "8080", &hints, &address)) != 0) {
+            throw ProxyHostAddressException();
+        }  
+        Socket listener(address);
+        
+    } catch (ProxyHostAddressException &e) {
+        std::cout << e.what() << std::endl;
+        return EXIT_FAILURE;
+    } catch (SokectBuildException &e) {
+        std::cout << e.what() << std::endl;
+        return EXIT_FAILURE;
+    } catch (SokectSetException &e) {
+        std::cout << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
 
     return EXIT_SUCCESS; 
 }
