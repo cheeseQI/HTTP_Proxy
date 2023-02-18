@@ -8,7 +8,7 @@ using namespace std;
 class MyException : public exception {
 public:    
     const char* what() const throw() {
-        return "my test exception";
+        return "my test exception: ";
     }
 };
 
@@ -16,7 +16,7 @@ public:
 class ProxyHostAddressException : public exception {
 public:    
     const char* what() const throw() {
-        return "cannot get host adrress correctly";
+        return "cannot get host adrress correctly: ";
     }
 };
 
@@ -36,5 +36,35 @@ public:
     }
 };
 
+class ServerBindException : public exception {
+public:    
+    const char* what() const throw() {
+        return "server bind to socket failed: ";
+    }
+};
+
+
+class ServerListenException : public exception {
+public:    
+    const char* what() const throw() {
+        return "server listen failed: ";
+    }
+};
+
+
+class SelectException : public exception {
+public:    
+    const char* what() const throw() {
+        return "server select failed: ";
+    }
+};
+
+
+class AcceptException : public exception {
+public:    
+    const char* what() const throw() {
+        return "server accept failed: ";
+    }
+};
 
 #endif

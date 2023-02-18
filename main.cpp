@@ -1,9 +1,10 @@
 #include "Socket.h"
+#include "Server.h"
 #include "ExceptionHandler.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <netdb.h>
+
 int main(int argc, char *argv[]) {   
     // socket variables
     struct addrinfo hints, *address;
@@ -18,15 +19,27 @@ int main(int argc, char *argv[]) {
         if ((state = getaddrinfo(NULL, "8080", &hints, &address)) != 0) {
             throw ProxyHostAddressException();
         }  
-        Socket listener(address);
-        
-    } catch (ProxyHostAddressException &e) {
+        Server proxyServer(address);
+        freeaddrinfo(address);
+        proxyServer.run();
+        //unique_ptr<Socket>& test_ptr = proxyServer.getListenSocketPtr();
+        //cout << "test for socket " << test_ptr->getFd() << " availability" << endl;
+    } catch (ProxyHostAddressException &e) { // todo: will be all changed to catch exception&e, if no special case
         std::cout << e.what() << std::endl;
         return EXIT_FAILURE;
     } catch (SokectBuildException &e) {
         std::cout << e.what() << std::endl;
         return EXIT_FAILURE;
     } catch (SokectSetException &e) {
+        std::cout << e.what() << std::endl;
+        return EXIT_FAILURE;
+    } catch (ServerBindException &e) {
+        std::cout << e.what() << std::endl;
+        return EXIT_FAILURE;
+    } catch (ServerListenException &e) {
+        std::cout << e.what() << std::endl;
+        return EXIT_FAILURE;
+    } catch (SelectException &e) {
         std::cout << e.what() << std::endl;
         return EXIT_FAILURE;
     }
