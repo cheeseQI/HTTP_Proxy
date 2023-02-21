@@ -1,5 +1,5 @@
 #include "Server.h"
-#include "string.h"
+
 #define PENDINGQUEUE 512  
 
 Server::Server(struct addrinfo * address) {
@@ -34,9 +34,8 @@ unique_ptr<Socket>& Server::getListenSocketPtr() {
 void Server::run() {
     // todo: only used for time-debugging, finally delete and also the select call tv param change to NULL
     struct timeval tv;
-    tv.tv_sec = 10;
+    tv.tv_sec = 20;
     tv.tv_usec = 0;
-    
     int listenFd = listenSocketPtr->getFd();
     while (true) {
         // copy on write
@@ -47,7 +46,7 @@ void Server::run() {
         if ((state = select(fdMax + 1, &cpFds, NULL, NULL, &tv)) == -1) {
             throw SelectException();
         } else if (state == 0) {
-            std::cout << "Loop ended after 10 seconds" << std::endl;
+            std::cout << "Loop ended after time out" << std::endl;
             break;
         }
         for(int i = 0; i <= fdMax; i ++) { 
@@ -66,21 +65,41 @@ void Server::run() {
                         char ip[INET6_ADDRSTRLEN];
                         inet_ntop(AF_INET, &(s->sin_addr), ip, INET_ADDRSTRLEN);
                         cout << "successful connect to client ip: " << ip << " with port: " << port << endl;
-                        // recv(serviceFd, &ports[currPlayer], sizeof(ports[currPlayer]), 0);
                         FD_SET(serviceFd, &readFds);
                         fdMax = fdMax > serviceFd ? fdMax : serviceFd;
                     }
                 } else {
                     // change from service fd
-                    char buffer[2048];
-                    int len = recv(i, buffer, 2048, 0);
-                    if (len <= 0) {
+                    vector<char> buffer(1024);
+                    int dataIdx = 0;
+                    int dataLen = recv(i, &buffer.data()[dataIdx], buffer.size() - dataIdx, 0);
+                    if (dataLen <= 0) {
                         close(i);
                         FD_CLR(i, &readFds);
                         cout << "Client " << i << " has disconnected." << endl;
                     } else {
-                        buffer[len] = '\0';
-                        cout << "Received message from client " << i << ": " << buffer << endl;
+                        dataIdx += dataLen;
+                        // enlarge when meet half
+                        if (dataIdx >= (int)buffer.size() / 2) {
+                            buffer.resize(buffer.size() * 2);
+                        }
+                        cout << "Received message from client " << i << " : ";
+                        for (int i = 0; i < dataIdx; i ++) {
+                            cout << buffer[i];
+                        } 
+                        cout << endl;
+                        // todo: will be changed to a variable response with not fixed length
+                        char sendBuffer[1024];
+                        string message = "Hello, world!\n";
+                        string response = "HTTP/1.1 200 OK\r\n"
+                                        "Content-Type: text/plain\r\n"
+                                        "Content-Length: " + to_string(message.length()) + "\r\n"
+                                        "\r\n"
+                                        + message;
+                        strncpy(sendBuffer, response.c_str(), sizeof(sendBuffer));
+                        if (send(i, sendBuffer, sizeof(sendBuffer), 0) == -1) {
+                            throw SendException();
+                        }
                     }
                 } 
             }

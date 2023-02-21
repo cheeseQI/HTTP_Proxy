@@ -3,7 +3,6 @@
 #include "ExceptionHandler.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 int main(int argc, char *argv[]) {   
     // socket variables
@@ -24,25 +23,9 @@ int main(int argc, char *argv[]) {
         proxyServer.run();
         //unique_ptr<Socket>& test_ptr = proxyServer.getListenSocketPtr();
         //cout << "test for socket " << test_ptr->getFd() << " availability" << endl;
-    } catch (ProxyHostAddressException &e) { // todo: will be all changed to catch exception&e, if no special case
+    } catch (exception &e) { // todo: will be all changed to catch exception&e, if no special case
         std::cout << e.what() << std::endl;
         return EXIT_FAILURE;
-    } catch (SokectBuildException &e) {
-        std::cout << e.what() << std::endl;
-        return EXIT_FAILURE;
-    } catch (SokectSetException &e) {
-        std::cout << e.what() << std::endl;
-        return EXIT_FAILURE;
-    } catch (ServerBindException &e) {
-        std::cout << e.what() << std::endl;
-        return EXIT_FAILURE;
-    } catch (ServerListenException &e) {
-        std::cout << e.what() << std::endl;
-        return EXIT_FAILURE;
-    } catch (SelectException &e) {
-        std::cout << e.what() << std::endl;
-        return EXIT_FAILURE;
-    }
-
+    } 
     return EXIT_SUCCESS; 
 }

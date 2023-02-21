@@ -67,4 +67,11 @@ public:
     }
 };
 
+class SendException : public exception {
+public:    
+    const char* what() const throw() {
+        return "server send message failed: ";
+    }
+};
+
 #endif
