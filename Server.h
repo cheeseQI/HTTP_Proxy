@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include "vector"
 #include "string.h"
+#include "ThreadPool.h"
 
 using namespace std;
 
@@ -18,6 +19,7 @@ private:
     unique_ptr<Socket> listenSocketPtr;
     fd_set readFds;
     int fdMax;
+    ThreadPool *threadPool;
 public:
     Server(struct addrinfo * address);
     ~Server();
