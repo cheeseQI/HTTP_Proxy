@@ -39,7 +39,7 @@ unique_ptr<Socket>& Server::getListenSocketPtr() {
 void Server::run() {
     // todo: only used for time-debugging, finally delete and also the select call tv param change to NULL
     struct timeval tv;
-    tv.tv_sec = 20;
+    tv.tv_sec = 200;
     tv.tv_usec = 0;
     int listenFd = listenSocketPtr->getFd();
     while (true) {
@@ -74,6 +74,6 @@ void Server::run() {
                 // fcntl(serviceFd, F_SETFL, flags | O_NONBLOCK);
                 threadPool->submit(serviceFd);
             }
-        }
+        } 
     }
 }

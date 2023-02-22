@@ -23,12 +23,11 @@ private:
     fd_set * readFds;
     vector<thread> m_threads;
     TaskQueue m_tasks;
-    mutex m_cond_mutex;
+    //mutex m_cond_mutex;
     condition_variable m_cond; // use to notify thread from sleeping
     bool m_shutdown;
     void handleClient(int fd) {
         // read and send msg to client;
-        // handle client close situation
         vector<char> buffer(1024);
         int dataIdx = 0;
         int dataLen = 0;
@@ -38,7 +37,7 @@ private:
             if (dataIdx >= (int)buffer.size() / 2) {
                 buffer.resize(buffer.size() * 2);
             }
-            cout << "Received message from client " << fd << " : ";
+            cout << "Received message from client " << fd << " : \n";
             for (int i = 0; i < dataIdx; i ++) {
                 cout << buffer[i];
             } 
@@ -52,14 +51,16 @@ private:
                             "\r\n"
                             + message;
             strncpy(sendBuffer, response.c_str(), sizeof(sendBuffer));
-            if (send(fd, sendBuffer, sizeof(sendBuffer), 0) == -1) {
+            if (send(fd, sendBuffer, response.length(), 0) == -1) {
                 throw SendException();
             }
         }
-        if (FD_ISSET(fd, readFds)) {
-            FD_CLR(fd, readFds);
+
+        if (dataLen == -1) {
+           throw RecvException();
         }
-        
+
+        FD_CLR(fd, readFds);
         close(fd);
         cout << "Client " << fd << " has disconnected." << endl;
     }
@@ -72,15 +73,15 @@ public:
             m_threads.emplace_back([this] {
                 while (true) {
                     int fd = -1;
-                    unique_lock<mutex> lock(m_cond_mutex);
+                    // unique_lock<mutex> lock(m_cond_mutex);
                     // brace to hold lock
                     if (m_shutdown && m_tasks.empty()) {
                         return;
                     }
                     // block at conditional variable
-                    if (m_tasks.empty()) {
-                        m_cond.wait(lock);
-                    }
+                    // if (m_tasks.empty()) {
+                    //     m_cond.wait(lock);
+                    // }
                     if (!m_tasks.empty()) {
                         fd = m_tasks.poll();
                     }

@@ -7,7 +7,6 @@
 int main(int argc, char *argv[]) {   
     // socket variables
     struct addrinfo hints, *address;
-    int state;
     memset(&hints, 0, sizeof(hints));
     // support ipv4 and ipv6， tcp stream socket， fill in self-ip
     hints.ai_family = AF_UNSPEC;
@@ -15,7 +14,7 @@ int main(int argc, char *argv[]) {
     hints.ai_flags = AI_PASSIVE;
     try {
         // todo: should use "http" port
-        if ((state = getaddrinfo(NULL, "8080", &hints, &address)) != 0) {
+        if (getaddrinfo(NULL, "8080", &hints, &address) != 0) {
             throw ProxyHostAddressException();
         }  
         Server proxyServer(address);

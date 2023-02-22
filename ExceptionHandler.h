@@ -74,4 +74,11 @@ public:
     }
 };
 
+class RecvException : public exception {
+public:    
+    const char* what() const throw() {
+        return "server receive message failed: ";
+    }
+};
+
 #endif

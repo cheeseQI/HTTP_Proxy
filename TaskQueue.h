@@ -29,10 +29,10 @@ public:
     std::unique_lock<std::mutex> lock(m_mutex);
     m_queue.push(fd);
   }
-//队列取出元素
+
 
   int poll() {
-    unique_lock<mutex> lock(m_mutex); //队列加锁
+    unique_lock<mutex> lock(m_mutex); 
     if (m_queue.empty()) {
       return -1;
     }
