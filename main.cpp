@@ -18,7 +18,6 @@ int main(int argc, char *argv[]) {
             throw ProxyHostAddressException();
         }  
         Server proxyServer(address);
-        freeaddrinfo(address);
         proxyServer.run();
         //unique_ptr<Socket>& test_ptr = proxyServer.getListenSocketPtr();
         //cout << "test for socket " << test_ptr->getFd() << " availability" << endl;

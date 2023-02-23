@@ -47,31 +47,47 @@ void ThreadPool::handleClient(int fd) {
             buffer.resize(buffer.size() * 2);
         }
         cout << "Received message from client " << fd << " : \n";
+        string requestStr(buffer[0], buffer[dataIdx]);
         for (int i = 0; i < dataIdx; i ++) {
             cout << buffer[i];
         } 
-        cout << endl;
-        // todo: will be changed to a variable response with not fixed length
+        // 没找到可用的解析函数？
+        
+        // rend req and get msg to google
+        struct addrinfo hints, *targetAddress;
+        hints.ai_family = AF_UNSPEC;
+        hints.ai_socktype = SOCK_STREAM;
+        const char* hostname = "example.com";
+        if (getaddrinfo(hostname, "80", &hints, &targetAddress) != 0) {
+            throw ProxyHostAddressException();
+        }  
+        Client proxyClient(targetAddress);
+        string request(buffer.begin(), buffer.begin() + dataIdx + 1);
+        proxyClient.contactWithRemoteServer(request);
+
+        
+        //
         char sendBuffer[2048];
-                // string message = "Hello, world!\n";
-        // string response = "HTTP/1.1 200 OK\r\n"
-        //                 "Content-Type: text/plain\r\n"
-        //                 "Content-Length: " + to_string(message.length()) + "\r\n"
-        //                 "\r\n"
-        //                 + message;
-        http::response<http::string_body> response;
-        response.version(11);
-        response.result(http::status::ok);
-        response.set(http::field::server, "MyServer");
-        response.set(http::field::content_type, "text/plain");
-        response.keep_alive(true);
-        response.body() = "Hello, world!\n";
-        response.prepare_payload();
-        stringstream ss;
-        ss << response;
-        string responseStr = ss.str();
-        strncpy(sendBuffer, responseStr.c_str(), responseStr.length());
-        if (send(fd, sendBuffer, responseStr.length(), 0) == -1) {
+        // http::response<http::string_body> response;
+        // response.version(11);
+        // response.result(http::status::ok);
+        // response.set(http::field::server, "MyServer");
+        // response.set(http::field::content_type, "text/plain");
+        // response.keep_alive(true);
+        // response.body() = "Hello, world!\n";
+        // response.prepare_payload();
+        // stringstream ss;
+        // ss << response;
+        // string responseStr = ss.str();
+        // strncpy(sendBuffer, responseStr.c_str(), responseStr.length());
+        string message = "Hello, world!\n";
+            string response = "HTTP/1.1 200 OK\r\n"
+                            "Content-Type: text/plain\r\n"
+                            "Content-Length: " + to_string(message.length()) + "\r\n"
+                            "\r\n"
+                            + message;
+        strncpy(sendBuffer, response.c_str(), sizeof(sendBuffer));
+        if (send(fd, sendBuffer, response.length(), 0) == -1) {
             throw SendException();
         }
     }
@@ -83,4 +99,11 @@ void ThreadPool::handleClient(int fd) {
     FD_CLR(fd, readFds);
     close(fd);
     cout << "Client " << fd << " has disconnected." << endl;
+}
+
+
+// send request and get msg back from server, cache and return 
+void ThreadPool::handleRemoteServer(int fd) {
+    // connect socket here, use new fd and send and get back from target.
+
 }

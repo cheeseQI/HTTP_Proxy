@@ -81,4 +81,19 @@ public:
     }
 };
 
+
+class ParseException : public exception {
+public:    
+    const char* what(string s) const throw() {
+        return "parse message failed: ";
+    }
+};
+
+
+class ConnectException : public exception {
+public:    
+    const char* what(string s) const throw() {
+        return "connect failed: ";
+    }
+};
 #endif

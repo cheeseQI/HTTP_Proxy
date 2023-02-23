@@ -19,6 +19,7 @@ Server::Server(struct addrinfo * address) {
         throw ServerListenException();
     }
     cout << "cool, the server start listening" << endl;
+    freeaddrinfo(address);
 }
 
 Server::~Server() {

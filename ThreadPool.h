@@ -1,3 +1,5 @@
+#ifndef THREAD_H
+#define THREAD_H 
 #include <iostream>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -11,10 +13,11 @@
 #include "condition_variable"
 #include "TaskQueue.h"
 #include "ExceptionHandler.h"
-#include <boost/beast.hpp>
+// #include <boost/beast.hpp>
+// #include <boost/beast/http.hpp>
+#include "Client.h"
 
-
-using namespace boost::beast;
+// using namespace boost::beast;
 using namespace std;
 
 // todo: change to?
@@ -30,6 +33,7 @@ private:
     condition_variable m_cond; // use to notify thread from sleeping
     bool m_shutdown;
     void handleClient(int fd);
+    void handleRemoteServer(int fd);
 
 public:
     ThreadPool(int threadNum, fd_set * readFds);
@@ -38,3 +42,4 @@ public:
 
     void submit(int fd);
 };
+#endif
