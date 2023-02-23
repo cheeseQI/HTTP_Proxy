@@ -69,9 +69,6 @@ void Server::run() {
                 cout << "successful connect to client ip: " << ip << " with port: " << port << endl;
                 FD_SET(serviceFd, &readFds);
                 fdMax = fdMax > serviceFd ? fdMax : serviceFd;
-                // non-blocking socket
-                // int flags = fcntl(serviceFd, F_GETFL, 0);
-                // fcntl(serviceFd, F_SETFL, flags | O_NONBLOCK);
                 threadPool->submit(serviceFd);
             }
         } 
