@@ -59,7 +59,7 @@ void Server::run() {
             struct sockaddr_storage clientAddr;
             socklen_t addrLen = sizeof(clientAddr);
             memset(&clientAddr, 0, addrLen);
-            int serviceFd = accept(listenFd, (struct sockaddr *)&clientAddr,  &addrLen);
+            int serviceFd = accept(listenFd, (struct sockaddr *) &clientAddr,  &addrLen);
             if (serviceFd == -1) {
                 throw AcceptException();
             } else {

@@ -13,9 +13,11 @@
 #include "condition_variable"
 #include "TaskQueue.h"
 #include "ExceptionHandler.h"
+#include "HttpRequest.h"
 // #include <boost/beast.hpp>
 // #include <boost/beast/http.hpp>
 #include "Client.h"
+
 
 // using namespace boost::beast;
 using namespace std;
@@ -29,11 +31,10 @@ private:
     fd_set * readFds;
     vector<thread> m_threads;
     TaskQueue m_tasks;
-    //mutex m_cond_mutex;
+    mutex m_cond_mutex;
     condition_variable m_cond; // use to notify thread from sleeping
     bool m_shutdown;
     void handleClient(int fd);
-    void handleRemoteServer(int fd);
 
 public:
     ThreadPool(int threadNum, fd_set * readFds);
