@@ -11,14 +11,13 @@ Client::Client(int fd, struct addrinfo * address) {
 }
 
 void Client::contactWithRemoteServer(string request) {
-    // char sendBuffer[65536];
     int connectFd = connectSocketPtr->getFd();
-    // strncpy(sendBuffer, request.c_str(), request.length());
     if (send(connectFd, request.c_str(), request.length(), 0) == -1) {
             throw SendException();
     }
     // read and send msg to client;
     vector<char> receiveBuffer(65536);
+    //fill_n(receiveBuffer.begin(), receiveBuffer.size(), 0);
     int dataLen = recv(connectFd, &receiveBuffer.data()[0], receiveBuffer.size(), 0);
     if (dataLen == -1) {
         throw RecvException();
@@ -26,52 +25,51 @@ void Client::contactWithRemoteServer(string request) {
     int dataIdx = dataLen;
     string responseStr(receiveBuffer.begin(), receiveBuffer.begin() + dataLen);
     HttpResponse httpResponse(responseStr);
-    // cout << "Received response from server " << " : \n";
-    cout << "data:" << responseStr << endl;
+    // cout << "Received first/part response from server " << " : \n";
     cout << "header:" << httpResponse.getHeader() << endl;
     int headerLen = httpResponse.getHeader().length();
     if (!httpResponse.getIsChuncked()) {
         int contentLen = httpResponse.getContentLength();
-        receiveBuffer.resize(headerLen + contentLen + 4); // 4  for /r/n/r/n
+        // no length info
+        if (contentLen == 0) {
+            // todo: may need resize(double when half) here
+            while ((dataLen = recv(connectFd, &receiveBuffer.data()[dataIdx], receiveBuffer.size() - dataIdx, 0)) > 0) {
+                dataIdx += dataLen;
+            }
+            if ((dataLen = recv(connectFd, &receiveBuffer.data()[dataIdx], receiveBuffer.size() - dataIdx, 0)) == -1) {
+                throw RecvException();
+            }
+            receiveBuffer.resize(dataIdx);
+            contactWithRemoteClient(receiveBuffer);
+            return;
+        }
+        int totalLen = headerLen + contentLen + 4; // addition for /r/n/r/n
+        receiveBuffer.resize(totalLen); 
+        // if (dataIdx < totalLen) {
+        //     fill_n(receiveBuffer.end() - (totalLen - dataIdx), totalLen - dataIdx, 0);
+        // }
         while (dataIdx < contentLen) {
             if ((dataLen = recv(connectFd, &receiveBuffer.data()[dataIdx], receiveBuffer.size() - dataIdx, 0)) == -1) {
                 throw RecvException();
             }
             dataIdx += dataLen;
         }
-        cout << "Received response from server " << " : \n";
-        string full_response(receiveBuffer.begin(), receiveBuffer.end());
-        cout << full_response << endl;
+        // cout << "Received full response from server " << " : \n";
+        // string full_response(receiveBuffer.begin(), receiveBuffer.end());
+        // cout << full_response << endl;
         contactWithRemoteClient(receiveBuffer);
         return;
     }
-    // todo: deal with chuncked block
+    // deal with chunked blocks
+    receiveBuffer.resize(dataIdx);
+    contactWithRemoteClient(receiveBuffer);
     while ((dataLen = recv(connectFd, &receiveBuffer.data()[0], receiveBuffer.size(), 0)) > 0) {
-        string responseStr(receiveBuffer.begin(), receiveBuffer.begin() + dataLen);
-        HttpResponse httpResponse(responseStr);
-        //contactWithRemoteClient(responseStr);
+        receiveBuffer.resize(dataLen);
+        contactWithRemoteClient(receiveBuffer);
     }
 }
 
 void Client::contactWithRemoteClient(vector<char> sendBuffer) {
-    // char sendBuffer[65535];
-    //strncpy(sendBuffer, responseStr.c_str(), responseStr.length() + 1);
-
-    // string message = "Hello, world!\n";
-    // string response = "HTTP/1.1 200 OK\r\n"
-    //                         "Content-Type: text/plain\r\n"
-    //                         "Content-Length: " + to_string(message.length()) + "\r\n"
-    //                         "\r\n"
-    //                         + message;
-    // if (send(serviceFd, response.c_str(), response.length(), 0) == -1) {
-    //     throw SendException();
-    // }
-    //cout << responseStr << endl; 
-    //cout << response << endl;
-    // HttpResponse httpResponse(responseStr);
-    //cout << responseStr << endl;
-    // cout << "real data len: " << responseStr.length() << endl;
-    // strncpy(sendBuffer, responseStr.c_str(), responseStr.length());
     if (send(serviceFd, &sendBuffer.data()[0], sendBuffer.size(), 0) == -1) {
         throw SendException();
     }

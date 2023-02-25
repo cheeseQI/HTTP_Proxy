@@ -60,6 +60,7 @@ public:
             body = parts[1];
         }
         isChunked = false;
+        this->contentLength = -1;
         parseHeader();
     }
 

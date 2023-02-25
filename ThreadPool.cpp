@@ -56,7 +56,7 @@ void ThreadPool::handleClient(int fd) {
     string method = httpRequest.getMethod();
     string hostName = httpRequest.getHost();
     // todo: will handle it in the future
-    if (method == "CONNECT" || method == "POST") {
+    if (method == "CONNECT") {
         FD_CLR(fd, readFds);
         close(fd);
         cout << "Client " << fd << " has disconnected." << endl;
@@ -70,6 +70,7 @@ void ThreadPool::handleClient(int fd) {
     int status = getaddrinfo(hostName.c_str(), "80", &hints, &targetAddress); 
     if (status != 0) {
         std::cerr << "getaddrinfo error: " << gai_strerror(status) << " errono: " << errno << '\n';
+        freeaddrinfo(targetAddress);
         throw ProxyHostAddressException();
     }
     // communicate with real server as proxy client 
