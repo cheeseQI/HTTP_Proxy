@@ -56,27 +56,23 @@ void ThreadPool::handleClient(int fd) {
     string method = httpRequest.getMethod();
     string hostName = httpRequest.getHost();
     // todo: will handle it in the future
-    if (method == "CONNECT") {
-        FD_CLR(fd, readFds);
-        close(fd);
-        cout << "Client " << fd << " has disconnected." << endl;
-        return;
-    }
     struct addrinfo hints, *targetAddress;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_CANONNAME;
-    int status = getaddrinfo(hostName.c_str(), "80", &hints, &targetAddress); 
+    hints.ai_flags = AI_CANONNAME; // todo: still may delete, need double check
+    const char * port = (method == "CONNECT") ? "443" : "80"; 
+    int status = getaddrinfo(hostName.c_str(), port, &hints, &targetAddress); 
     if (status != 0) {
-        std::cerr << "getaddrinfo error: " << gai_strerror(status) << " errono: " << errno << '\n';
         freeaddrinfo(targetAddress);
-        throw ProxyHostAddressException();
+        throw ProxyHostAddressException(hostName + ": " + gai_strerror(status));
     }
-    // communicate with real server as proxy client 
     Client proxyClient(fd, targetAddress);
-    proxyClient.contactWithRemoteServer(requestStr);
-
+    if (method == "CONNECT") {
+        proxyClient.contactInTunnel();
+    } else {
+        proxyClient.contactWithRemoteServer(requestStr);
+    }
     FD_CLR(fd, readFds);
     close(fd);
     cout << "Client " << fd << " has disconnected." << endl;

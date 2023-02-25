@@ -44,7 +44,7 @@ void Server::run() {
     tv.tv_usec = 0;
     int listenFd = listenSocketPtr->getFd();
     while (true) {
-        // copy on write
+        // copy/write seperation, change apply to readin and then copy
         fd_set cpFds = readFds;
         // start blocking select, any changes will be updated to read_fds
         int state;

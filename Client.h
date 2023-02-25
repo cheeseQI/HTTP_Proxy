@@ -6,9 +6,10 @@
 #include "sys/socket.h"
 #include "unistd.h"
 #include "netdb.h"
+#include "fcntl.h"
 #include "ExceptionHandler.h"
 #include "HttpResponse.h"
-#include <arpa/inet.h>
+#include "arpa/inet.h"
 #include "vector"
 #include "string.h"
 
@@ -22,5 +23,6 @@ public:
     Client(int fd, struct addrinfo * address);
     void contactWithRemoteServer(string request);
     void contactWithRemoteClient(vector<char> sendBuffer);
+    void contactInTunnel();
 }; 
 #endif

@@ -35,8 +35,8 @@ private:
                 this->uri = httpRequestUri;
                 this->version = httpVersion;
             } else if (line.find("Host: ") == 0) {
-                // start after host: tag
-                this->host = line.substr(6); 
+                // start after host: tag, get rid of port
+                this->host = split(line.substr(6), ":")[0]; 
             }
         }
     }

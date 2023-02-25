@@ -12,13 +12,15 @@ int main(int argc, char *argv[]) {
     hints.ai_flags = AI_PASSIVE;
     try {
         // todo: should use "http" port
-        if (getaddrinfo(NULL, "8080", &hints, &address) != 0) {
-            throw ProxyHostAddressException();
+        int status;
+        if ((status = getaddrinfo(NULL, "8080", &hints, &address)) != 0) {
+            string serverInfo("proxy server: ");
+            throw ProxyHostAddressException(serverInfo + gai_strerror(status));
         }  
         Server proxyServer(address);
         proxyServer.run();
     } catch (exception &e) {
-        std::cout << e.what() << std::endl;
+        cout << e.what() << endl;
         return EXIT_FAILURE;
     } 
     return EXIT_SUCCESS; 

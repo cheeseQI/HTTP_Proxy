@@ -14,9 +14,14 @@ public:
 
 
 class ProxyHostAddressException : public exception {
+private:
+    string errMsg;
 public:    
-    const char* what() const throw() {
-        return "cannot get host adrress correctly: ";
+    ProxyHostAddressException(const string& errMsg) : errMsg(errMsg) {}
+    virtual const char* what() const throw() override {
+        string msg = "cannot get host address correctly: ";
+        msg += errMsg;
+        return msg.c_str();
     }
 };
 
@@ -68,9 +73,14 @@ public:
 };
 
 class SendException : public exception {
+private:
+    string errMsg;
 public:    
+    SendException(const string& errMsg) : errMsg(errMsg) {}
     const char* what() const throw() {
-        return "server send message failed: ";
+        string msg = "server send message failed: ";
+        msg += errMsg;
+        return msg.c_str();
     }
 };
 
@@ -84,7 +94,7 @@ public:
 
 class ParseException : public exception {
 public:    
-    const char* what(string s) const throw() {
+    const char* what() const throw() {
         return "parse message failed: ";
     }
 };
@@ -92,7 +102,7 @@ public:
 
 class ConnectException : public exception {
 public:    
-    const char* what(string s) const throw() {
+    const char* what() const throw() {
         return "connect failed: ";
     }
 };
