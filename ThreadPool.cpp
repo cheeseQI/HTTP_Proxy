@@ -46,12 +46,16 @@ void ThreadPool::handleClient(int fd) {
     vector<char> buffer(65536);
     int dataLen = 0; 
     dataLen = recv(fd, &buffer.data()[0], buffer.size(), 0);
+    if (dataLen == 0) {
+        return;
+    }
     if (dataLen == -1) {
         throw RecvException();
     }
     cout << "Received request from socket fd: " << fd << " : \n";
     string requestStr(buffer.begin(), buffer.begin() + dataLen);
     cout << requestStr << endl;
+
     HttpRequest httpRequest(requestStr);
     string method = httpRequest.getMethod();
     string hostName = httpRequest.getHost();
@@ -70,9 +74,9 @@ void ThreadPool::handleClient(int fd) {
     Client proxyClient(fd, targetAddress);
     if (method == "CONNECT") {
         proxyClient.contactInTunnel();
-    } else {
+    } else if (method == "GET" || method == "POST") {
         proxyClient.contactWithRemoteServer(requestStr);
-    }
+    } 
     FD_CLR(fd, readFds);
     close(fd);
     cout << "Client " << fd << " has disconnected." << endl;

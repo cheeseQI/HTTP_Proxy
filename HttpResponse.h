@@ -10,9 +10,12 @@ class HttpResponse {
 private:
     string header;
     string version;
-    int statusCode;
+    string statusCode;
     string statusText;
     string body;
+    string date;
+    string cacheControl;
+    string expire;
     bool isChunked;
     int contentLength;
     // may add other element in headers
@@ -32,6 +35,12 @@ private:
                 this->isChunked = true;
             } else if (line.find("Content-Length: ") == 0) {
                 this->contentLength = stoi(line.substr(16));
+            } else if (line.find("Date: ") == 0) {
+                this->date = line.substr(6);
+            } else if (line.find("Cache-Control: ") == 0) {
+                this->cacheControl = line.substr(15);
+            } else if (line.find("Expire: ") == 0) {
+                this->expire = line.substr(8);
             }
         }
     }
@@ -59,8 +68,11 @@ public:
         if (parts.size() > 1) {
             body = parts[1];
         }
-        isChunked = false;
+        this->isChunked = false;
         this->contentLength = -1;
+        this->date = "";
+        this->cacheControl = "";
+        this->expire = "";
         parseHeader();
     }
 
@@ -76,7 +88,7 @@ public:
         return version;
     }
     
-    int getStatusCode() {
+    string getStatusCode() {
         return statusCode;
     }
 
@@ -90,6 +102,23 @@ public:
 
     int getContentLength() {
         return contentLength;
+    }
+
+    bool canCache() {
+        return (cacheControl != "" && cacheControl.find("private") == string::npos 
+        && cacheControl.find("no-cache") == string::npos && cacheControl.find("no-store") == string::npos);
+    }
+
+    string getDate() {
+        return date;
+    }
+
+    string getCacheControl() {
+        return cacheControl;
+    }
+
+    string getExpire() {
+        return expire;
     }
 };
 #endif

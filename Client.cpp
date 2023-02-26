@@ -13,13 +13,13 @@ Client::Client(int fd, struct addrinfo * address) {
     freeaddrinfo(address);
 }
 
-void Client::contactWithRemoteServer(string request) {
+void Client::contactWithRemoteServer(string request) { 
     int status;
-    int connectFd = connectSocketPtr->getFd();
+    int connectFd = connectSocketPtr->getFd(); // todo:如果是GET 先查缓存，缓存有效直接返回；否则走下面逻辑
     if ((status = send(connectFd, request.c_str(), request.length(), 0)) == -1) {
             throw SendException(gai_strerror(status));
     }
-    // read and send msg to client;
+
     vector<char> receiveBuffer(65536);
     int dataLen = recv(connectFd, &receiveBuffer.data()[0], receiveBuffer.size(), 0);
     if (dataLen == -1) {
@@ -30,9 +30,14 @@ void Client::contactWithRemoteServer(string request) {
     HttpResponse httpResponse(responseStr);
     // cout << "Received first/part response from server " << " : \n";
     cout << "header:" << httpResponse.getHeader() << endl;
-    int headerLen = httpResponse.getHeader().length();
+    cout << "date:" << httpResponse.getDate() << endl;
+    cout << "control:" << httpResponse.getCacheControl() << endl;
+    cout << "expire time:" << httpResponse.getExpire() << endl;
+    int headerLen = httpResponse.getHeader().length(); //如果响应支持缓存（can cache）&&GET&&200 则缓存
+    // not chunked response
     if (!httpResponse.getIsChuncked()) {
         int contentLen = httpResponse.getContentLength();
+        // protocol does not support content-length
         if (contentLen == 0) {
             // todo: may need resize(double when half) here
             while ((dataLen = recv(connectFd, &receiveBuffer.data()[dataIdx], receiveBuffer.size() - dataIdx, 0)) > 0) {
@@ -53,9 +58,6 @@ void Client::contactWithRemoteServer(string request) {
             }
             dataIdx += dataLen;
         }
-        // cout << "Received full response from server " << " : \n";
-        // string full_response(receiveBuffer.begin(), receiveBuffer.end());
-        // cout << full_response << endl;
         contactWithRemoteClient(receiveBuffer);
         return;
     }
@@ -101,7 +103,7 @@ void Client::contactInTunnel() {
         vector<char> forwardBuffer(65536);
         int dataLen = 0;
         if (FD_ISSET(serviceFd, &cpFds)) {
-            cout << "statr receive from client (will not show the encrypted msg)" << endl;
+            cout << "receive from client (will not show the encrypted msg)" << endl;
             if ((dataLen = recv(serviceFd, &forwardBuffer.data()[0], forwardBuffer.size(), 0)) == -1) {
                 throw RecvException();
             }
@@ -110,22 +112,26 @@ void Client::contactInTunnel() {
             }
             //string str(forwardBuffer.begin(), forwardBuffer.begin() + dataLen);
             //cout << str << endl;
+            cout << "send to server (will not show the encrypted msg)" << endl;
             if ((status = send(connectFd, &forwardBuffer.data()[0], dataLen, 0)) == -1) {
                 throw SendException(gai_strerror(status));
             }
         }
         if (FD_ISSET(connectFd, &cpFds)) {
-            cout << "statr receive from server (will not show the encrypted msg)" << endl;
+            cout << "receive from server (will not show the encrypted msg)" << endl;
             if ((dataLen = recv(connectFd, &forwardBuffer.data()[0], forwardBuffer.size(), 0)) == -1) {
                 throw RecvException();
             }
             if (dataLen <= 0) {
                 break;
             }
-            //string str(forwardBuffer.begin(), forwardBuffer.begin() + dataLen);
-            //cout << str << endl;
+            // string str(forwardBuffer.begin(), forwardBuffer.begin() + dataLen);
+            // cout << str << endl;
+            cout << "send to client (will not show the encrypted msg)" << endl;
             if ((status = send(serviceFd, &forwardBuffer.data()[0], dataLen, 0)) == -1) {
-                throw SendException(gai_strerror(status));
+                // todo: sometimes crush here, only break may help but that's not a perfect solution
+                //throw SendException(gai_strerror(status));
+                break;
             }
         }
 
