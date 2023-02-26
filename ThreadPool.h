@@ -8,7 +8,7 @@
 #include <cstring>
 #include <sys/select.h>
 #include <vector>
-#include <mutex>
+#include "mutex"
 #include "thread"
 #include "condition_variable"
 #include "TaskQueue.h"
@@ -17,8 +17,8 @@
 // #include <boost/beast.hpp>
 // #include <boost/beast/http.hpp>
 #include "Client.h"
-
-
+#include "uuid/uuid.h"
+#include "SafeLog.h"
 // using namespace boost::beast;
 using namespace std;
 
@@ -34,10 +34,10 @@ private:
     mutex m_cond_mutex;
     condition_variable m_cond; // use to notify thread from sleeping
     bool m_shutdown;
-    void handleClient(int fd);
+    void handleClient(int fd, string uuidStr, shared_ptr<SafeLog>& logFilePtr);
 
 public:
-    ThreadPool(int threadNum, fd_set * readFds);
+    ThreadPool(int threadNum, fd_set * readFds, shared_ptr<SafeLog>& logFilePtr);
 
     ~ThreadPool();
 

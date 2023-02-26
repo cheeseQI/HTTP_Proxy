@@ -9,6 +9,7 @@ using namespace std;
 class HttpResponse {
 private:
     string header;
+    string firstLine;
     string version;
     string statusCode;
     string statusText;
@@ -24,6 +25,7 @@ private:
         vector<string> lines = split(header, "\r\n");
         for (string line : lines) {
             if (line.find("HTTP") == 0) {
+                firstLine = line;
                 istringstream iss(line);
                 string method, requestUri, httpVersion;
                 iss >> httpVersion >> statusCode >> statusText;
@@ -119,6 +121,10 @@ public:
 
     string getExpire() {
         return expire;
+    }
+
+    string getFirstLine() {
+        return firstLine;
     }
 };
 #endif

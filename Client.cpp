@@ -3,10 +3,10 @@
 /// @brief 
 /// @param fd service fd to user client
 /// @param address remote server address
-Client::Client(int fd, struct addrinfo * address) {
+Client::Client(int fd, struct addrinfo * address, string uuidStr, shared_ptr<SafeLog>& logFile) 
+: serviceFd(fd), uuidStr(uuidStr), logFile(logFile) {
     connectSocketPtr = make_unique<Socket>(address);
     int connectFd = connectSocketPtr->getFd();
-    serviceFd = fd;
     if (connect(connectFd, address->ai_addr, address->ai_addrlen) == -1) {
         throw ConnectException();
     }
@@ -16,9 +16,12 @@ Client::Client(int fd, struct addrinfo * address) {
 void Client::contactWithRemoteServer(string request) { 
     int status;
     int connectFd = connectSocketPtr->getFd(); // todo:如果是GET 先查缓存，缓存有效直接返回；否则走下面逻辑
+    HttpRequest httpRequest(request);
+    /**cache ops**/
     if ((status = send(connectFd, request.c_str(), request.length(), 0)) == -1) {
-            throw SendException(gai_strerror(status));
+        throw SendException(gai_strerror(status));
     }
+    logFile->writeRequestToLog(uuidStr, httpRequest.getFirstLine(), httpRequest.getHost());
 
     vector<char> receiveBuffer(65536);
     int dataLen = recv(connectFd, &receiveBuffer.data()[0], receiveBuffer.size(), 0);
@@ -28,12 +31,13 @@ void Client::contactWithRemoteServer(string request) {
     int dataIdx = dataLen;
     string responseStr(receiveBuffer.begin(), receiveBuffer.begin() + dataLen);
     HttpResponse httpResponse(responseStr);
-    // cout << "Received first/part response from server " << " : \n";
+    logFile->writeServerResponseToLog(uuidStr, httpResponse.getFirstLine(), httpRequest.getHost());
     cout << "header:" << httpResponse.getHeader() << endl;
     cout << "date:" << httpResponse.getDate() << endl;
     cout << "control:" << httpResponse.getCacheControl() << endl;
     cout << "expire time:" << httpResponse.getExpire() << endl;
-    int headerLen = httpResponse.getHeader().length(); //如果响应支持缓存（can cache）&&GET&&200 则缓存
+    int headerLen = httpResponse.getHeader().length(); // 如果响应支持缓存（can cache）&&GET&&200 则缓存
+    /**cache ops**/
     // not chunked response
     if (!httpResponse.getIsChuncked()) {
         int contentLen = httpResponse.getContentLength();
@@ -72,15 +76,19 @@ void Client::contactWithRemoteServer(string request) {
 
 void Client::contactWithRemoteClient(vector<char> sendBuffer) {
     int status;
+    string responseStr(sendBuffer.begin(), sendBuffer.end());
+    HttpResponse httpResponse(responseStr);
+    logFile->writeResponseToClientToLog(uuidStr, httpResponse.getFirstLine());
     if ((status = send(serviceFd, &sendBuffer.data()[0], sendBuffer.size(), 0)) == -1) {
         throw SendException(gai_strerror(status));
     }
+
     return;
 }
 
-
 // tunnel that forward info between client(by serviceFd) and server(connectFd)
 void Client::contactInTunnel() {
+    // todo: do we need to log connect info?
     int connectFd = connectSocketPtr->getFd();
     string confirm = "HTTP/1.1 200 OK\r\n\r\n";
     int status;
@@ -134,6 +142,5 @@ void Client::contactInTunnel() {
                 break;
             }
         }
-
     }
 }

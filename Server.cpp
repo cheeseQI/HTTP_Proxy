@@ -6,11 +6,12 @@
 
 Server::Server(struct addrinfo * address) {
     listenSocketPtr = make_unique<Socket>(address);
+    logFilePtr = make_shared<SafeLog>("/var/log/erss/proxy.log");
     int listenFd = listenSocketPtr->getFd();
     FD_ZERO(&readFds);
     FD_SET(listenFd, &readFds);
     fdMax = listenFd;
-    threadPool = new ThreadPool(THREAD_NUM, &readFds);
+    threadPool = new ThreadPool(THREAD_NUM, &readFds, logFilePtr);
     if (bind(listenFd, address->ai_addr, address->ai_addrlen) == -1) {
         throw ServerBindException();
     }

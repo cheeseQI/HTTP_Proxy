@@ -1,10 +1,14 @@
 #include "ThreadPool.h"
 
-ThreadPool::ThreadPool(int threadNum, fd_set * readFds) : m_shutdown(false) {
+ThreadPool::ThreadPool(int threadNum, fd_set * readFds, shared_ptr<SafeLog>& logFilePtr) : m_shutdown(false) {
     this->readFds = readFds;
     m_threads.reserve(threadNum);
     for (int i = 0; i < threadNum; i++) {
-        m_threads.emplace_back([this] {
+        m_threads.emplace_back([this, &logFilePtr] {
+            thread_local uuid_t uuid;
+            uuid_generate(uuid);
+            char uuidStr[37]; // 37 是 UUID 字符串形式的长度
+            uuid_unparse(uuid, uuidStr);
             while (true) {
                 int fd = -1;
                 {
@@ -15,13 +19,14 @@ ThreadPool::ThreadPool(int threadNum, fd_set * readFds) : m_shutdown(false) {
                     if (m_tasks.empty()) {
                         m_cond.wait(lock);
                     }
-                    cout << "start work as thread " << this_thread::get_id() << endl;
+                    cout << "start work as thread " << this_thread::get_id() 
+                        << ", UUID: " << uuidStr << endl;
                     if (!m_tasks.empty()) {
                         fd = m_tasks.poll();
                     }
                 }
                 if (fd != -1) {
-                    handleClient(fd);
+                    handleClient(fd, uuidStr, logFilePtr);
                 }
             }
         });
@@ -41,7 +46,7 @@ void ThreadPool::submit(int fd) {
     m_cond.notify_one();
 }
 
-void ThreadPool::handleClient(int fd) {
+void ThreadPool::handleClient(int fd, string uuidStr, shared_ptr<SafeLog>& logFilePtr) {
     // read and send msg to client;
     vector<char> buffer(65536);
     int dataLen = 0; 
@@ -71,7 +76,7 @@ void ThreadPool::handleClient(int fd) {
         freeaddrinfo(targetAddress);
         throw ProxyHostAddressException(hostName + ": " + gai_strerror(status));
     }
-    Client proxyClient(fd, targetAddress);
+    Client proxyClient(fd, targetAddress, uuidStr, logFilePtr);
     if (method == "CONNECT") {
         proxyClient.contactInTunnel();
     } else if (method == "GET" || method == "POST") {

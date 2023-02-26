@@ -106,4 +106,11 @@ public:
         return "connect failed: ";
     }
 };
+
+class FileOpenException : public exception {
+public:    
+    const char* what() const throw() {
+        return "open proxy file failed: ";
+    }
+};
 #endif

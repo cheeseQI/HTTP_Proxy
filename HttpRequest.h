@@ -8,11 +8,13 @@ using namespace std;
 class HttpRequest {
 private:
     string header;
+    string firstLine;
     string method;
     string uri;
     string host;
     string body;
     string version;
+    string date;
     // todo: may add others like connection, useragent, and they can all parse from header
 
     void parseHeader() {
@@ -20,6 +22,7 @@ private:
         for (string line : lines) {
             // 解析请求行
             if (line.find("GET") == 0 || line.find("POST") == 0) {
+                firstLine = line;
                 istringstream iss(line);
                 string httpMethod, httpRequestUri, httpVersion;
                 iss >> method >> httpRequestUri >> httpVersion;
@@ -27,6 +30,7 @@ private:
                 this->uri = httpRequestUri;
                 this->version = httpVersion;
             } else if (line.find("CONNECT") == 0) {
+                firstLine = line;
                 istringstream iss(line);
                 string port = ":443";
                 string httpMethod, httpRequestUri, httpVersion;
@@ -37,6 +41,8 @@ private:
             } else if (line.find("Host: ") == 0) {
                 // start after host: tag, get rid of port
                 this->host = split(line.substr(6), ":")[0]; 
+            } else if (line.find("Date: ") == 0) {
+                this->date = line.substr(6);
             }
         }
     }
@@ -85,6 +91,14 @@ public:
 
     string getBody() {
         return body;
+    }
+
+    string getFirstLine() {
+        return firstLine;
+    }
+
+    string getDate() {
+        return date;
     }
 };
 #endif

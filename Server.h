@@ -17,6 +17,7 @@ using namespace std;
 class Server {
 private:
     unique_ptr<Socket> listenSocketPtr;
+    shared_ptr<SafeLog> logFilePtr;
     fd_set readFds;
     int fdMax;
     ThreadPool *threadPool;
