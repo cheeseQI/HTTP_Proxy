@@ -23,7 +23,7 @@
 using namespace std;
 
 // todo: change to?
-const int THREAD_NUM = 4;
+const int THREAD_NUM = 12;
 
 
 class ThreadPool {
