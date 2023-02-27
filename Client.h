@@ -31,6 +31,6 @@ public:
     Client(int fd, struct addrinfo * address, string uuidStr, shared_ptr<SafeLog>& logFile);
     void contactWithRemoteServer(string request);
     void contactWithRemoteClient(vector<char> sendBuffer);
-    void contactInTunnel();
+    void contactInTunnel(string requestStr);
 }; 
 #endif

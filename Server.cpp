@@ -5,13 +5,13 @@
 
 
 Server::Server(struct addrinfo * address) {
-    listenSocketPtr = make_unique<Socket>(address);
     logFilePtr = make_shared<SafeLog>("/var/log/erss/proxy.log");
-    int listenFd = listenSocketPtr->getFd();
     FD_ZERO(&readFds);
+    listenSocketPtr = make_unique<Socket>(address);
+    int listenFd = listenSocketPtr->getFd();
     FD_SET(listenFd, &readFds);
     fdMax = listenFd;
-    threadPool = new ThreadPool(THREAD_NUM, &readFds, logFilePtr);
+    threadPool = new ThreadPool(THREAD_NUM, logFilePtr);
     if (bind(listenFd, address->ai_addr, address->ai_addrlen) == -1) {
         throw ServerBindException();
     }
@@ -46,33 +46,31 @@ void Server::run() {
     int listenFd = listenSocketPtr->getFd();
     while (true) {
         // copy/write seperation, change apply to readin and then copy
-        fd_set cpFds = readFds;
+        // fd_set cpFds = readFds;
         // start blocking select, any changes will be updated to read_fds
         int state;
-        if ((state = select(fdMax + 1, &cpFds, NULL, NULL, &tv)) == -1) {
+        if ((state = select(listenFd + 1, &readFds, NULL, NULL, &tv)) == -1) {
             throw SelectException();
         } else if (state == 0) {
             std::cout << "Loop ended after time out" << std::endl;
             break;
         }
-        if (FD_ISSET(listenFd, &cpFds)) {
         // if the change is from listen socket, create a service socket for acccepting
-            struct sockaddr_storage clientAddr;
-            socklen_t addrLen = sizeof(clientAddr);
-            memset(&clientAddr, 0, addrLen);
-            int serviceFd = accept(listenFd, (struct sockaddr *) &clientAddr,  &addrLen);
-            if (serviceFd == -1) {
-                throw AcceptException();
-            } else {
-                struct sockaddr_in *s = (struct sockaddr_in*) &clientAddr;
-                int port = ntohs(s->sin_port);
-                char ip[INET6_ADDRSTRLEN];
-                inet_ntop(AF_INET, &(s->sin_addr), ip, INET_ADDRSTRLEN);
-                cout << "successful connect to client ip: " << ip << " with port: " << port << endl;
-                FD_SET(serviceFd, &readFds);
-                fdMax = fdMax > serviceFd ? fdMax : serviceFd;
-                threadPool->submit(serviceFd);
-            }
-        } 
+        struct sockaddr_storage clientAddr;
+        socklen_t addrLen = sizeof(clientAddr);
+        memset(&clientAddr, 0, addrLen);
+        int serviceFd = accept(listenFd, (struct sockaddr *) &clientAddr,  &addrLen);
+        if (serviceFd == -1) {
+            throw AcceptException();
+        } else {
+            struct sockaddr_in *s = (struct sockaddr_in*) &clientAddr;
+            int port = ntohs(s->sin_port);
+            char ip[INET6_ADDRSTRLEN];
+            inet_ntop(AF_INET, &(s->sin_addr), ip, INET_ADDRSTRLEN);
+            cout << "successful connect to client ip: " << ip << " with port: " << port << endl;
+            //FD_SET(serviceFd, &readFds);
+            //fdMax = fdMax > serviceFd ? fdMax : serviceFd;
+            threadPool->submit(serviceFd);
+        }
     }
 }

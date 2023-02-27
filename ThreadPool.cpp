@@ -1,7 +1,7 @@
 #include "ThreadPool.h"
 
-ThreadPool::ThreadPool(int threadNum, fd_set * readFds, shared_ptr<SafeLog>& logFilePtr) : m_shutdown(false) {
-    this->readFds = readFds;
+ThreadPool::ThreadPool(int threadNum, shared_ptr<SafeLog>& logFilePtr) : m_shutdown(false) {
+    //this->writeFds = writeFds;
     m_threads.reserve(threadNum);
     for (int i = 0; i < threadNum; i++) {
         m_threads.emplace_back([this, &logFilePtr] {
@@ -28,6 +28,7 @@ ThreadPool::ThreadPool(int threadNum, fd_set * readFds, shared_ptr<SafeLog>& log
                 if (fd != -1) {
                     handleClient(fd, uuidStr, logFilePtr);
                 }
+                //}
             }
         });
     }
@@ -78,11 +79,12 @@ void ThreadPool::handleClient(int fd, string uuidStr, shared_ptr<SafeLog>& logFi
     }
     Client proxyClient(fd, targetAddress, uuidStr, logFilePtr);
     if (method == "CONNECT") {
-        proxyClient.contactInTunnel();
+        proxyClient.contactInTunnel(requestStr);
     } else if (method == "GET" || method == "POST") {
         proxyClient.contactWithRemoteServer(requestStr);
     } 
-    FD_CLR(fd, readFds);
+    //cout << "wired test" << endl;
+    //FD_CLR(fd, writeFds);
     close(fd);
     cout << "Client " << fd << " has disconnected." << endl;
 }

@@ -28,7 +28,7 @@ const int THREAD_NUM = 4;
 
 class ThreadPool {
 private:
-    fd_set * readFds;
+    //fd_set * writeFds;
     vector<thread> m_threads;
     TaskQueue m_tasks;
     mutex m_cond_mutex;
@@ -37,7 +37,7 @@ private:
     void handleClient(int fd, string uuidStr, shared_ptr<SafeLog>& logFilePtr);
 
 public:
-    ThreadPool(int threadNum, fd_set * readFds, shared_ptr<SafeLog>& logFilePtr);
+    ThreadPool(int threadNum, shared_ptr<SafeLog>& logFilePtr);
 
     ~ThreadPool();
 

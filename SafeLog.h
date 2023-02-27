@@ -32,6 +32,12 @@ public:
         logFile << uuidStr << ": Responding \"" << firstLine << "\"" << endl;
     }
 
+    void writeTunnelClosedLog(string uuidStr) {
+        checkValid();
+        lock_guard<mutex> lock(fileMutex);
+        logFile << uuidStr <<": Tunnel closed" << endl;
+    }
+
     string timeStap() {
         time_t t = time(nullptr);
         vector<char> buffer(80);

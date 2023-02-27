@@ -25,8 +25,8 @@ private:
                 firstLine = line;
                 istringstream iss(line);
                 string httpMethod, httpRequestUri, httpVersion;
-                iss >> method >> httpRequestUri >> httpVersion;
-                this->method = method;
+                iss >> httpMethod >> httpRequestUri >> httpVersion;
+                this->method = httpMethod;
                 this->uri = httpRequestUri;
                 this->version = httpVersion;
             } else if (line.find("CONNECT") == 0) {

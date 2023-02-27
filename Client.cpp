@@ -28,13 +28,16 @@ void Client::contactWithRemoteServer(string request) {
     if (dataLen == -1) {
         throw RecvException();
     }
+    // server close the connection
+    if (dataLen == 0) {
+        return;
+    }
     int dataIdx = dataLen;
     string responseStr(receiveBuffer.begin(), receiveBuffer.begin() + dataLen);
     HttpResponse httpResponse(responseStr);
     logFile->writeServerResponseToLog(uuidStr, httpResponse.getFirstLine(), httpRequest.getHost());
     cout << "header:" << httpResponse.getHeader() << endl;
-    cout << "date:" << httpResponse.getDate() << endl;
-    cout << "control:" << httpResponse.getCacheControl() << endl;
+
     cout << "expire time:" << httpResponse.getExpire() << endl;
     int headerLen = httpResponse.getHeader().length(); // 如果响应支持缓存（can cache）&&GET&&200 则缓存
     /**cache ops**/
@@ -42,7 +45,7 @@ void Client::contactWithRemoteServer(string request) {
     if (!httpResponse.getIsChuncked()) {
         int contentLen = httpResponse.getContentLength();
         // protocol does not support content-length
-        if (contentLen == 0) {
+        if (contentLen == -1) {
             // todo: may need resize(double when half) here
             while ((dataLen = recv(connectFd, &receiveBuffer.data()[dataIdx], receiveBuffer.size() - dataIdx, 0)) > 0) {
                 dataIdx += dataLen;
@@ -50,13 +53,16 @@ void Client::contactWithRemoteServer(string request) {
             if ((dataLen = recv(connectFd, &receiveBuffer.data()[dataIdx], receiveBuffer.size() - dataIdx, 0)) == -1) {
                 throw RecvException();
             }
+            
             receiveBuffer.resize(dataIdx);
+            logFile->writeResponseToClientToLog(uuidStr, httpResponse.getFirstLine());
             contactWithRemoteClient(receiveBuffer);
             return;
         }
+        // pass remaining data
         int totalLen = headerLen + contentLen + 4; // addition for /r/n/r/n
         receiveBuffer.resize(totalLen); 
-        while (dataIdx < contentLen) {
+        while (dataIdx < totalLen) {
             if ((dataLen = recv(connectFd, &receiveBuffer.data()[dataIdx], receiveBuffer.size() - dataIdx, 0)) == -1) {
                 throw RecvException();
             }
@@ -67,7 +73,9 @@ void Client::contactWithRemoteServer(string request) {
     }
     // deal with chunked blocks
     receiveBuffer.resize(dataIdx);
+    logFile->writeResponseToClientToLog(uuidStr, httpResponse.getFirstLine());
     contactWithRemoteClient(receiveBuffer);
+    // send remaining data;
     while ((dataLen = recv(connectFd, &receiveBuffer.data()[0], receiveBuffer.size(), 0)) > 0) {
         receiveBuffer.resize(dataLen);
         contactWithRemoteClient(receiveBuffer);
@@ -76,9 +84,6 @@ void Client::contactWithRemoteServer(string request) {
 
 void Client::contactWithRemoteClient(vector<char> sendBuffer) {
     int status;
-    string responseStr(sendBuffer.begin(), sendBuffer.end());
-    HttpResponse httpResponse(responseStr);
-    logFile->writeResponseToClientToLog(uuidStr, httpResponse.getFirstLine());
     if ((status = send(serviceFd, &sendBuffer.data()[0], sendBuffer.size(), 0)) == -1) {
         throw SendException(gai_strerror(status));
     }
@@ -87,10 +92,12 @@ void Client::contactWithRemoteClient(vector<char> sendBuffer) {
 }
 
 // tunnel that forward info between client(by serviceFd) and server(connectFd)
-void Client::contactInTunnel() {
-    // todo: do we need to log connect info?
+void Client::contactInTunnel(string requestStr) {
+    HttpRequest httpRequest(requestStr);
+    logFile->writeServerResponseToLog(uuidStr, httpRequest.getFirstLine(), httpRequest.getHost());
     int connectFd = connectSocketPtr->getFd();
     string confirm = "HTTP/1.1 200 OK\r\n\r\n";
+    logFile->writeResponseToClientToLog(uuidStr, "HTTP/1.1 200 OK");
     int status;
     if ((status = send(serviceFd, confirm.c_str(), confirm.length(), 0)) == -1) {
         throw SendException(gai_strerror(status));
@@ -104,7 +111,7 @@ void Client::contactInTunnel() {
     FD_SET(serviceFd, &readFds);
     while (true) {
         fd_set cpFds = readFds;
-        //int state;
+        // int state;
         if ((status = select(fdMax + 1, &cpFds, NULL, NULL, NULL)) == -1) {
             throw SelectException();
         }
@@ -116,10 +123,11 @@ void Client::contactInTunnel() {
                 throw RecvException();
             }
             if (dataLen <= 0) {
+                logFile->writeTunnelClosedLog(uuidStr);
                 break;
             }
-            //string str(forwardBuffer.begin(), forwardBuffer.begin() + dataLen);
-            //cout << str << endl;
+            string str(forwardBuffer.begin(), forwardBuffer.begin() + dataLen);
+            cout << str << endl;
             cout << "send to server (will not show the encrypted msg)" << endl;
             if ((status = send(connectFd, &forwardBuffer.data()[0], dataLen, 0)) == -1) {
                 throw SendException(gai_strerror(status));
@@ -131,15 +139,16 @@ void Client::contactInTunnel() {
                 throw RecvException();
             }
             if (dataLen <= 0) {
+                logFile->writeTunnelClosedLog(uuidStr);
                 break;
             }
-            // string str(forwardBuffer.begin(), forwardBuffer.begin() + dataLen);
-            // cout << str << endl;
+            string str(forwardBuffer.begin(), forwardBuffer.begin() + dataLen);
+            cout << str << endl;
             cout << "send to client (will not show the encrypted msg)" << endl;
             if ((status = send(serviceFd, &forwardBuffer.data()[0], dataLen, 0)) == -1) {
-                // todo: sometimes crush here, only break may help but that's not a perfect solution
-                //throw SendException(gai_strerror(status));
-                break;
+                //todo: sometimes crush here, only break may help but that's not a perfect solution
+                throw SendException(gai_strerror(status));
+                //break;
             }
         }
     }
