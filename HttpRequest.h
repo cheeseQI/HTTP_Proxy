@@ -15,6 +15,8 @@ private:
     string body;
     string version;
     string date;
+    bool hasIfNoneMatch;
+    bool hasIfModifiedSince;
     // todo: may add others like connection, useragent, and they can all parse from header
 
     void parseHeader() {
@@ -43,6 +45,10 @@ private:
                 this->host = split(line.substr(6), ":")[0]; 
             } else if (line.find("Date: ") == 0) {
                 this->date = line.substr(6);
+            } else if (line.find("If-None-Match: ") == 0) {
+                this->hasIfNoneMatch = true;
+            } else if (line.find("If-Modified-Since" == 0)) {
+                this->hasIfModifiedSince = true;
             }
         }
     }
@@ -63,6 +69,8 @@ private:
 public:
     HttpRequest(string message) {
         vector<string> parts = split(message, "\r\n\r\n");
+        this->hasIfModifiedSince = false;
+        this->hasIfNoneMatch = false;
         if (parts.size() > 0) {
             header = parts[0];
         }
@@ -99,6 +107,14 @@ public:
 
     string getDate() {
         return date;
+    }
+
+    bool getIfModifiedSince() {
+        return hasIfModifiedSince;
+    }
+
+    bool getIfNoneMatch() {
+        return hasIfNoneMatch;
     }
 };
 #endif

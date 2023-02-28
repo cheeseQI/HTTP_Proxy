@@ -36,5 +36,7 @@ public:
     void safeSendToServer(vector<char> sendBuffer);
     void contactInTunnel(string requestStr);
     void tryCache(HttpRequest httpRequest, string cacheresponse);
+    bool isValidCache(string cacheresponse);
+    bool isRevalidateCache(string cacheresponse);
 }; 
 #endif

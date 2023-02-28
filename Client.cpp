@@ -13,17 +13,28 @@ Client::Client(int fd, struct addrinfo * address, string uuidStr, shared_ptr<Saf
 }
 
 void Client::contactWithRemoteServer(string request) { 
-    int connectFd = connectSocketPtr->getFd(); // todo:如果是GET 先查缓存，缓存有效直接返回；否则走下面逻辑
+    int connectFd = connectSocketPtr->getFd();
     HttpRequest httpRequest(request);
     string cacheresponse;
     if (httpRequest.getMethod() == "GET") {
-        cacheresponse = myCache.get(httpRequest.getUri()); // 先写个wildcard再换成httpRequest.getUri()，log日志！
-        cout << "catch response: " << cacheresponse << endl;
-        if (cacheresponse.length() != 0) {
-            safeSendToClient(vector<char>(cacheresponse.c_str(), cacheresponse.c_str() + cacheresponse.length()));
-            HttpResponse httpResponse(cacheresponse);
-            logFile->writeCacheHitLog(uuidStr, httpResponse.getFirstLine());
-            return;
+        cacheresponse = myCache.get(httpRequest.getUri()); 
+        if (cacheresponse.length() != 0 && !HttpResponse(cacheresponse).isRevalidate()) {
+            HttpResponse httpCacheResponse(cacheresponse);
+            if (isValidCache(cacheresponse)) {
+                safeSendToClient(vector<char>(cacheresponse.c_str(), cacheresponse.c_str() + cacheresponse.length()));
+                logFile->writeCacheHitLog(uuidStr, httpCacheResponse.getFirstLine());
+                return;
+            } else {
+                string etag = httpCacheResponse.getEtag();
+                string lastModified = httpCacheResponse.getLastModified();
+                if (etag != "" && !httpRequest.getIfNoneMatch()) {
+                    request = request.substr(0, request.length() - 2);
+                    request += "If-None-Match: \"" + etag + "\"\r\n"; //todo: use constant!
+                } else if (lastModified != "" && !httpRequest.getIfModifiedSince()) {
+                    request = request.substr(0, request.length() - 2);
+                    request += "If-Modified-Since: " + lastModified + "\r\n"; 
+                }
+            }
         }
     }
     safeSendToServer(vector<char>(request.c_str(), request.c_str() + request.length()));
@@ -44,9 +55,17 @@ void Client::contactWithRemoteServer(string request) {
     string responseStr(receiveBuffer.begin(), receiveBuffer.begin() + dataLen);
     HttpResponse httpResponse(responseStr);
     logFile->writeServerResponseToLog(uuidStr, httpResponse.getFirstLine(), httpRequest.getHost());
-    cout << "response header:" << httpResponse.getHeader() << endl;
-    //cout << "expire time:" << httpResponse.getExpire() << endl;
-    int headerLen = httpResponse.getHeader().length(); // 如果响应支持缓存（can cache）&&GET&&200 则缓存
+    cout << "response header:" << httpResponse.getHeader() << endl;    
+    int headerLen = httpResponse.getHeader().length();
+    // revalidate
+    if (httpRequest.getMethod() == "GET" && (cacheresponse = myCache.get(httpRequest.getUri())) != "") {
+        HttpResponse httpCacheResponse(cacheresponse);
+        if (httpCacheResponse.isRevalidate() && httpResponse.getStatusCode() == "304") {
+            safeSendToClient(vector<char>(cacheresponse.c_str(), cacheresponse.c_str() + cacheresponse.length()));
+            logFile->writeCacheHitLog(uuidStr, httpCacheResponse.getFirstLine());
+            return;
+        }
+    }
 
     // not chunked response
     if (!httpResponse.getIsChuncked()) {
@@ -59,7 +78,6 @@ void Client::contactWithRemoteServer(string request) {
             return;
         }
         // pass remaining data
-        //cout << "test after contentLen check success" << endl;
         int totalLen = headerLen + contentLen + 4; // addition for /r/n/r/n
         receiveBuffer.resize(totalLen); 
         while (dataIdx < totalLen) {
@@ -71,7 +89,7 @@ void Client::contactWithRemoteServer(string request) {
         }
         //cout << "test after contentLen check success and while end" << endl;
         safeSendToClient(receiveBuffer);
-        /** if can cache then cache here **/
+  
         tryCache(httpRequest, string(cacheBuffer.begin(), cacheBuffer.end()));
         return;
     }
@@ -86,7 +104,6 @@ void Client::contactWithRemoteServer(string request) {
     while ((dataLen = recv(connectFd, &receiveBuffer.data()[0], receiveBuffer.size(), 0)) > 0) {
         cacheBuffer.insert(cacheBuffer.end(), receiveBuffer.begin(), receiveBuffer.begin() + dataLen);
         receiveBuffer.resize(dataLen);
-        //cout << "chunk rec success with len: " << dataLen << endl;
         if (send(serviceFd, &receiveBuffer.data()[0], receiveBuffer.size(), 0) <= 0) {
             cout << "end chunk" << endl;
             tryCache(httpRequest, string(cacheBuffer.begin(), cacheBuffer.end()));
@@ -166,7 +183,7 @@ void Client::contactInTunnel(string requestStr) {
         vector<char> forwardBuffer(65536);
         int dataLen = 0;
         if (FD_ISSET(serviceFd, &cpFds)) {
-            cout << "receive from client (will not show the encrypted msg)" << endl;
+            cout << "receive from client " << endl;
             if ((dataLen = recv(serviceFd, &forwardBuffer.data()[0], forwardBuffer.size(), 0)) <= 0) {
                 //throw RecvException();
                 logFile->writeTunnelClosedLog(uuidStr);
@@ -175,7 +192,7 @@ void Client::contactInTunnel(string requestStr) {
             }
             //string str(forwardBuffer.begin(), forwardBuffer.begin() + dataLen);
             //cout << str << endl;
-            cout << "send to server (will not show the encrypted msg) with len: " << dataLen << endl;
+            cout << "send to server  with len: " << dataLen << endl;
             if ((status = send(connectFd, &forwardBuffer.data()[0], dataLen, 0)) <= 0) {
                 logFile->writeTunnelClosedLog(uuidStr);
                 cout << "Tunnel closed by server" << endl;
@@ -207,9 +224,37 @@ void Client::contactInTunnel(string requestStr) {
 
 void Client::tryCache(HttpRequest httpRequest, string cacheresponse) {
     string cacheRes = myCache.storeResponse(httpRequest.getUri(), cacheresponse);
+    HttpResponse httpResponse(cacheresponse);
     if (cacheRes == "cached") {
-        logFile->writeCacheStoreSuccessLog(uuidStr, "this will epxire or re-validation"); // todo: hint!!
+        string hint;
+        if (httpResponse.isRevalidate()) {
+            hint  = "but requires re-validation";
+        } else if (httpResponse.getMaxAge() != "") {
+            hint = "expired at " + logFile->timeStap(httpResponse.getMaxEndTime());
+        } else if (httpResponse.getExpire() != "") {
+            hint = "expired at " + logFile->timeStap(httpResponse.getExpiredTime());
+        } 
+        logFile->writeCacheStoreSuccessLog(uuidStr, hint);
     } else {
-        logFile->writeCacheStoreFailedLog(uuidStr, cacheRes); //todo: add reason(private or...)
+        logFile->writeCacheStoreFailedLog(uuidStr, cacheRes); 
     }
 }
+
+bool Client::isValidCache(string cacheresponse) {
+    HttpResponse httpResponse(cacheresponse);
+    time_t currentTime = time(nullptr);
+    if (httpResponse.getMaxAge() != "" && httpResponse.getMaxEndTime() < currentTime) {
+        logFile->writeCacheExpiredLog(uuidStr, httpResponse.getMaxEndTime());
+        return false;
+    } else if (httpResponse.getExpire() != "" && httpResponse.getExpiredTime() < currentTime) {
+        logFile->writeCacheExpiredLog(uuidStr, httpResponse.getExpiredTime());
+        return false;
+    } 
+    return true;
+}
+
+// bool Client::isRevalidateCache(string cacheresponse) {
+
+//     HttpResponse httpResponse(cacheresponse);
+//     return httpResponse.isRevalidate();
+// }

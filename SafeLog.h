@@ -17,7 +17,7 @@ public:
     void writeRequestToLog(string uuidStr, string firstLine, string host) {
         checkValid();
         lock_guard<mutex> lock(fileMutex);
-        logFile << uuidStr << ": Requesting \"" << firstLine << "\" from " << host << " @ " << timeStap() << endl;
+        logFile << uuidStr << ": Requesting \"" << firstLine << "\" from " << host << " @ " << timeStap(time(nullptr)) << endl;
     }
 
     void writeServerResponseToLog(string uuidStr, string firstLine, string host) {
@@ -57,12 +57,29 @@ public:
         logFile << uuidStr <<": not cacheable because " << hint << endl;
     }
 
-    string timeStap() {
+    
+    void writeCacheExpiredLog(string uuidStr, time_t Expiretime) {
+        checkValid();
+        lock_guard<mutex> lock(fileMutex);
+        vector<char> buffer(80);
+        strftime(&buffer.data()[0], 80, "%a %b %e %T %Y", gmtime(&Expiretime));
+        logFile << uuidStr <<": cached, but expired at " << string(buffer.begin(), buffer.end()) << endl;
+    }
+
+    // string timeStap() {
+    //     time_t t = time(nullptr);
+    //     vector<char> buffer(80);
+    //     strftime(&buffer.data()[0], 80, "%a %b %e %T %Y", gmtime(&t));
+    //     return string(buffer.begin(), buffer.end());
+    // }
+
+    string timeStap(time_t) {
         time_t t = time(nullptr);
         vector<char> buffer(80);
         strftime(&buffer.data()[0], 80, "%a %b %e %T %Y", gmtime(&t));
         return string(buffer.begin(), buffer.end());
     }
+
 
     void checkValid() {
         if (!logFile.is_open()) {

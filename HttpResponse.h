@@ -4,6 +4,9 @@
 #include "string"
 #include "vector"
 #include "iostream"
+#include "chrono"
+#include "ctime"
+#include "iomanip"
 using namespace std;
 
 class HttpResponse {
@@ -16,8 +19,14 @@ private:
     string body;
     string date;
     string cacheControl;
+    string maxAge;
     string expire;
+    time_t maxEndTime;
+    time_t expiredTime;
+    string etag;
+    string lastModified;
     bool isChunked;
+    bool revalidate;
     int contentLength;
     // may add other element in headers
 
@@ -41,8 +50,20 @@ private:
                 this->date = line.substr(6);
             } else if (line.find("Cache-Control: ") == 0) {
                 this->cacheControl = line.substr(15);
+                for (string seg: split(line, ",")) {
+                    if (seg.find("max-age=") != string::npos) {
+                        seg = seg.substr(seg.find("max-age="));
+                        maxAge = seg.substr(8);
+                    } else if (seg.find("must-revalidate") != string::npos) {
+                        revalidate = true; 
+                    }
+                }
             } else if (line.find("Expire: ") == 0) {
                 this->expire = line.substr(8);
+            } else if (line.find("Etag: ") == 0) {
+                this->etag = line.substr(6);
+            } else if (line.find("Last-Modified: ") == 0) {
+                this->lastModified = line.substr(15);
             }
         }
     }
@@ -70,11 +91,15 @@ public:
         if (parts.size() > 1) {
             body = parts[1];
         }
-        this->isChunked = false;
         this->contentLength = -1;
         this->date = "";
         this->cacheControl = "";
         this->expire = "";
+        this->maxAge = "";
+        this->etag = "";
+        this->lastModified = "";
+        this->isChunked = false;
+        this->revalidate = false;
         parseHeader();
     }
 
@@ -96,6 +121,14 @@ public:
 
     string getStatusText() {
         return statusText;
+    }
+    
+    string getMaxAge() {
+        return maxAge;
+    }
+
+    string getExpire() {
+        return expire;
     }
 
     bool getIsChuncked() {
@@ -119,12 +152,39 @@ public:
         return cacheControl;
     }
 
-    string getExpire() {
-        return expire;
-    }
-
     string getFirstLine() {
         return firstLine;
     }
+
+    time_t getMaxEndTime() {
+        time_t respTime = getConvertedDate(date);
+        auto expireTime = chrono::system_clock::from_time_t(respTime) + chrono::seconds(stoi(maxAge));
+        return chrono::system_clock::to_time_t(expireTime);
+    }
+
+    time_t getExpiredTime() {
+        return getConvertedDate(expire);
+    }
+
+    time_t getConvertedDate(string dateStr) {
+        istringstream iss(dateStr);
+        tm tm = {};
+        iss >> get_time(&tm, "%a, %d %b %Y %H:%M:%S GMT");
+        chrono::system_clock::time_point tp = chrono::system_clock::from_time_t(mktime(&tm));
+        return chrono::system_clock::to_time_t(tp);
+    }
+
+    bool isRevalidate() {
+        return revalidate;
+    }
+
+    string getEtag() {
+        return etag;
+    }
+
+    string getLastModified() {
+        return lastModified;
+    }
+
 };
 #endif
