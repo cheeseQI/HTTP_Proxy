@@ -65,14 +65,7 @@ public:
         strftime(&buffer.data()[0], 80, "%a %b %e %T %Y", gmtime(&Expiretime));
         logFile << uuidStr <<": cached, but expired at " << string(buffer.begin(), buffer.end()) << endl;
     }
-
-    // string timeStap() {
-    //     time_t t = time(nullptr);
-    //     vector<char> buffer(80);
-    //     strftime(&buffer.data()[0], 80, "%a %b %e %T %Y", gmtime(&t));
-    //     return string(buffer.begin(), buffer.end());
-    // }
-
+    
     string timeStap(time_t) {
         time_t t = time(nullptr);
         vector<char> buffer(80);

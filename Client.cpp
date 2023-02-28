@@ -1,4 +1,5 @@
 #include "Client.h"
+
 /// @brief 
 /// @param fd service fd to user client
 /// @param address remote server address
@@ -40,7 +41,7 @@ void Client::contactWithRemoteServer(string request) {
     safeSendToServer(vector<char>(request.c_str(), request.c_str() + request.length()));
     logFile->writeRequestToLog(uuidStr, httpRequest.getFirstLine(), httpRequest.getHost());
 
-    vector<char> receiveBuffer(65536);
+    vector<char> receiveBuffer(BUFFER_VOLUME);
     int dataLen = recv(connectFd, &receiveBuffer.data()[0], receiveBuffer.size(), 0);
     if (dataLen == -1) {
         throw RecvException();
@@ -87,7 +88,6 @@ void Client::contactWithRemoteServer(string request) {
             cacheBuffer.insert(cacheBuffer.end(), &receiveBuffer.data()[dataIdx], &receiveBuffer.data()[dataIdx] + dataLen);
             dataIdx += dataLen;
         }
-        //cout << "test after contentLen check success and while end" << endl;
         safeSendToClient(receiveBuffer);
   
         tryCache(httpRequest, string(cacheBuffer.begin(), cacheBuffer.end()));
@@ -100,7 +100,7 @@ void Client::contactWithRemoteServer(string request) {
     safeSendToClient(receiveBuffer);
     // send remaining data & maintain last 4 digit
     vector<char> trailerMaintainer = {'h','o','l', 'd'};
-    receiveBuffer.resize(65536);
+    receiveBuffer.resize(BUFFER_VOLUME);
     while ((dataLen = recv(connectFd, &receiveBuffer.data()[0], receiveBuffer.size(), 0)) > 0) {
         cacheBuffer.insert(cacheBuffer.end(), receiveBuffer.begin(), receiveBuffer.begin() + dataLen);
         receiveBuffer.resize(dataLen);
@@ -122,9 +122,10 @@ void Client::contactWithRemoteServer(string request) {
             tryCache(httpRequest, string(cacheBuffer.begin(), cacheBuffer.end()));
             return;
         }
-        receiveBuffer.resize(65536);
+        receiveBuffer.resize(BUFFER_VOLUME);
     }
 }
+
 
 void Client::safeSendToClient(vector<char> sendBuffer) {
     int status;
@@ -134,6 +135,7 @@ void Client::safeSendToClient(vector<char> sendBuffer) {
 
     return;
 }
+
 
 void Client::safeSendToServer(vector<char> sendBuffer) {
     int status;
@@ -156,8 +158,6 @@ void Client::contactInTunnel(string requestStr) {
     if ((status = send(serviceFd, confirm.c_str(), confirm.length(), 0)) == -1) {
         throw SendException(gai_strerror(status));
     }
-    // fcntl(serviceFd, F_SETFL, O_NONBLOCK);
-    // fcntl(connectFd, F_SETFL, O_NONBLOCK);
     int fdMax = max(connectFd, serviceFd);
     while (true) {
         fd_set readFds;
@@ -167,12 +167,11 @@ void Client::contactInTunnel(string requestStr) {
         if ((status = select(fdMax + 1, &readFds, NULL, NULL, NULL)) == -1) {
             throw SelectException();
         } 
-        vector<char> forwardBuffer(65536);
+        vector<char> forwardBuffer(BUFFER_VOLUME);
         int dataLen = 0;
         if (FD_ISSET(serviceFd, &readFds)) {
             cout << "receive from client " << endl;
             if ((dataLen = recv(serviceFd, &forwardBuffer.data()[0], forwardBuffer.size(), 0)) <= 0) {
-                //throw RecvException();
                 logFile->writeTunnelClosedLog(uuidStr);
                 cout << "Tunnel closed by client" << endl;
                 break;
@@ -182,7 +181,6 @@ void Client::contactInTunnel(string requestStr) {
                 logFile->writeTunnelClosedLog(uuidStr);
                 cout << "Tunnel closed by server" << endl;
                 break;
-                //throw SendException(gai_strerror(status));
             }
             cout << "after send to server (will not show the encrypted msg)" << endl;
         } 
@@ -195,7 +193,6 @@ void Client::contactInTunnel(string requestStr) {
             }
             cout << "send to client (will not show the encrypted msg)" << endl;
             if ((status = send(serviceFd, &forwardBuffer.data()[0], dataLen, 0)) <= 0) {
-                //todo: sometimes crush here, only break may help but that's not a perfect solution
                 logFile->writeTunnelClosedLog(uuidStr);
                 cout << "Tunnel closed by client" << endl;
                 break;
@@ -224,6 +221,7 @@ void Client::tryCache(HttpRequest httpRequest, string cacheresponse) {
     }
 }
 
+
 bool Client::isValidCache(string cacheresponse) {
     HttpResponse httpResponse(cacheresponse);
     time_t currentTime = time(nullptr);
@@ -236,9 +234,3 @@ bool Client::isValidCache(string cacheresponse) {
     } 
     return true;
 }
-
-// bool Client::isRevalidateCache(string cacheresponse) {
-
-//     HttpResponse httpResponse(cacheresponse);
-//     return httpResponse.isRevalidate();
-// }

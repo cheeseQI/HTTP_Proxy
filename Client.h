@@ -16,11 +16,12 @@
 #include "uuid/uuid.h"
 #include "fstream"
 #include "mutex"
-#include <chrono>
-#include <ctime>
+#include "chrono"
+#include "ctime"
 #include "SafeLog.h"
 #include "Cache.h"
 using namespace std;
+const int BUFFER_VOLUME = 65536;
 
 class Client {
 private:

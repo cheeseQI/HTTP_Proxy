@@ -1,5 +1,6 @@
 #include "ThreadPool.h"
 
+
 ThreadPool::ThreadPool(int threadNum, shared_ptr<SafeLog>& logFilePtr) : m_shutdown(false) {
     m_threads.reserve(threadNum);
     for (int i = 0; i < threadNum; i++) {
@@ -27,11 +28,11 @@ ThreadPool::ThreadPool(int threadNum, shared_ptr<SafeLog>& logFilePtr) : m_shutd
                 if (fd != -1) {
                     handleClient(fd, uuidStr, logFilePtr);
                 }
-                //}
             }
         });
     }
 }
+
 
 ThreadPool::~ThreadPool() {
     m_shutdown = true;
@@ -41,14 +42,16 @@ ThreadPool::~ThreadPool() {
     }
 }
 
+
 void ThreadPool::submit(int fd) {
     m_tasks.add(fd);
     m_cond.notify_one();
 }
 
+
 void ThreadPool::handleClient(int fd, string uuidStr, shared_ptr<SafeLog>& logFilePtr) {
     // read and send msg to client;
-    vector<char> buffer(65536);
+    vector<char> buffer(BUFFER_VOLUME);
     int dataLen = 0; 
     dataLen = recv(fd, &buffer.data()[0], buffer.size(), 0);
     if (dataLen == 0) {
@@ -68,7 +71,6 @@ void ThreadPool::handleClient(int fd, string uuidStr, shared_ptr<SafeLog>& logFi
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
-    //hints.ai_flags = AI_CANONNAME; // todo: still may delete, need double check
     const char * port = (method == "CONNECT") ? "443" : "80"; 
     int status = getaddrinfo(hostName.c_str(), port, &hints, &targetAddress); 
     if (status != 0) {

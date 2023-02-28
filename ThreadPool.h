@@ -1,13 +1,13 @@
 #ifndef THREAD_H
 #define THREAD_H 
-#include <iostream>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <cstring>
-#include <sys/select.h>
-#include <vector>
+#include "iostream"
+#include "sys/socket.h"
+#include "sys/types.h"
+#include "unistd.h"
+#include "fcntl.h"
+#include "cstring"
+#include "sys/select.h"
+#include "vector"
 #include "mutex"
 #include "thread"
 #include "condition_variable"
@@ -18,10 +18,7 @@
 #include "uuid/uuid.h"
 #include "SafeLog.h"
 using namespace std;
-
-// todo: change to?
 const int THREAD_NUM = 50;
-
 
 class ThreadPool {
 private:

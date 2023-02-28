@@ -13,8 +13,6 @@ private:
   mutex m_mutex;
 
 public:
-  // TaskQueue() {}
-  // ~TaskQueue() {}
   bool empty() {
     unique_lock<mutex> lock(m_mutex); 
     return m_queue.empty();

@@ -2,10 +2,11 @@
 #include "fcntl.h"
 #include "functional"
 #define PENDINGQUEUE 512  
+#define LOGPATH "/var/log/erss/proxy.log"
 
 
 Server::Server(struct addrinfo * address) {
-    logFilePtr = make_shared<SafeLog>("/var/log/erss/proxy.log");
+    logFilePtr = make_shared<SafeLog>(LOGPATH);
     FD_ZERO(&readFds);
     listenSocketPtr = make_unique<Socket>(address);
     int listenFd = listenSocketPtr->getFd();
@@ -15,13 +16,13 @@ Server::Server(struct addrinfo * address) {
     if (bind(listenFd, address->ai_addr, address->ai_addrlen) == -1) {
         throw ServerBindException();
     }
-    // start listen, kernel will reject the new connection if pending connections exceed PENDINGQUEUE
     if (listen(listenFd, PENDINGQUEUE) == -1) {
         throw ServerListenException();
     }
     cout << "cool, the server start listening" << endl;
     freeaddrinfo(address);
 }
+
 
 Server::~Server() {
     for (int i = 0; i <= fdMax; ++i) {
@@ -34,9 +35,11 @@ Server::~Server() {
     cout << "cool, the server is deleted" << endl; 
 }
 
+
 unique_ptr<Socket>& Server::getListenSocketPtr() {
     return listenSocketPtr;
 }
+
 
 void Server::run() {
     int listenFd = listenSocketPtr->getFd();
