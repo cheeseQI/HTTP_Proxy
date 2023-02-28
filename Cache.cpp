@@ -3,9 +3,21 @@
 std::mutex copy_mutex;
 std::mutex cache_mutex;
 // ？ max age在哪里实现的
+
+Cache* Cache::instance = nullptr;
 string Cache::get(string key){
     std::lock_guard<std::mutex> lck(cache_mutex);
     //if key does not exist, return NULL
+    if (key == "wildcard") {
+        string message = "Hello, cache world!\n";
+                        string response = "HTTP/1.1 200 OK\r\n"
+                                        "Content-Type: text/plain\r\n"
+                                        "Content-Length: " + to_string(message.length()) + "\r\n"
+                                        "\r\n"
+                                        + message;
+
+        return response;
+    }
     if (!Cache::instance->my_cache.count(key)) {
         return "";
     }
@@ -16,7 +28,7 @@ string Cache::get(string key){
 }
 
 //put key and value pair into cache
-void Cache::put(string key, string value){
+void Cache::put(string key, string value) {
     std::lock_guard<std::mutex> lck(cache_mutex);
     if (!Cache::instance->my_cache.count(key)) {
         // if key does not exist, create a new node
@@ -79,37 +91,33 @@ Cache::~Cache(){
 
 
 
-bool Cache::storeResponse(string uri, HttpResponse rsp, int id) {
+string Cache::storeResponse(string uri, string rspStr) {
+    HttpResponse rsp(rspStr);
     string code = rsp.getStatusCode();
     string cacheControl = rsp.getCacheControl();
-    if (code == "200" && !rsp.canCache()) {
-        put(uri, rsp.getHeader()); // 改成 整个resp buffer
-
+    if (code == "200" && rsp.canCache()) {
+        put(uri, rspStr);
         string expire = rsp.getExpire();
         string message;
-
         if(expire != "") {
             //message = generateLogMsg(id,"cached, expires at " + expire);
         }
         else {
             //message = generateLogMsg(id, "cached, but requires re-validation");
         }
-        //writeToLog(message);
-
-        return true;
-    } else{
-        string reason = "";
-        if(code != "200"){
-            reason = "not 200 OK";
-        }
-        else if(rsp.canCache()){
-            reason = "Cache-control: private or no-store or no-cache";
-        }
-        //string message = generateLogMsg(id, "not cacheable because " + reason);
-        //writeToLog(message);
-
-        return false;
-    }
+        return "cached";
+    } else if (code != "200") {
+        return "response is not 200/OK";
+    } else if (cacheControl == "") {
+        return "does not support cache control";
+    } else if (cacheControl.find("no-cache") != string::npos) {
+        return "cache-control: no-cache";
+    } else if (cacheControl.find("no-store") != string::npos) {
+            return "cache-control: no-store";
+    } else if (cacheControl.find("private") != string::npos) {
+        return "cache-control: private";
+    } 
+    return "cache-policy forbidden";
 }
 
 

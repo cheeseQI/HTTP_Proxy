@@ -2,7 +2,7 @@ CXX = g++
 CXXFLAGS = -Wall -std=c++14 -pedantic -g
 LDFLAGS = -pthread -luuid
 
-SRCS = main.cpp Socket.cpp Server.cpp ThreadPool.cpp Client.cpp
+SRCS = main.cpp Socket.cpp Server.cpp ThreadPool.cpp Client.cpp Cache.cpp
 OBJS = $(SRCS:.cpp=.o)
 
 all: main
@@ -24,6 +24,9 @@ ThreadPool.o: ThreadPool.cpp ThreadPool.h
 
 Client.o: Client.cpp Client.h
 	$(CXX) $(CXXFLAGS) -c Client.cpp $(LDFLAGS)
+
+Cache.o: Cache.cpp Cache.h
+	$(CXX) $(CXXFLAGS) -c Cache.cpp $(LDFLAGS)
 
 clean:
 	rm -f $(OBJS) main

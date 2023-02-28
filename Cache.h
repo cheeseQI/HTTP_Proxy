@@ -1,3 +1,6 @@
+#ifndef CACHE_H
+#define CACHE_H 
+
 #include <map>
 #include <algorithm>
 #include <mutex>
@@ -17,7 +20,7 @@ private:
         string value; // 存header + body
         Node* prev;
         Node* next;
-        Node(): key(), value(), prev(nullptr), next(nullptr){}
+        Node(): key("-1"), value("-1"), prev(nullptr), next(nullptr){}
         Node(string k,string v): key(k), value(v), prev(nullptr), next(nullptr){}
     };
     map<string,Node*> my_cache = {}; // uri, Node
@@ -29,7 +32,7 @@ private:
     // Singleton
     // private constructor to prevent instantiation
     Cache(){}
-    Cache(int c): my_cache(), capacity(c), size(0){
+    Cache(int c): my_cache(), capacity(c), size(0) {
         head = new Node();
         tail = new Node();
         head->next=tail;
@@ -39,11 +42,10 @@ private:
     static Cache* instance;
 
 
-
 public:
     static Cache* getInstance() {
-        if (instance == nullptr){
-            instance = new Cache();
+        if (instance == nullptr) {
+            instance = new Cache(50);
         }
         return instance;
     }
@@ -63,7 +65,7 @@ public:
     void removeTail();
 
 
-    bool storeResponse(string uri, HttpResponse rsp, int id);
+    string storeResponse(string uri, string rsp);
     //string revalidate(HttpRequest request, HttpResponse response, int socket,int id);
     //string checkIfNoneMatch(HttpRequest request, HttpResponse response, int socket, string etag, int id);
     //string checkIfModifiedSince(HttpRequest request, HttpResponse response, int socket, string lastModify, int id);
@@ -71,10 +73,5 @@ public:
     //string checkValidate(HttpRequest request, HttpResponse response, int socket, string type, string content, int id);
 };
 
-// // initialize static field
-// map<string, Cache::Node*> Cache::my_cache = {};
-// Cache::Node* Cache::head = nullptr;
-// Cache::Node* Cache::tail = nullptr;
-// int Cache::capacity = 0;
-// int Cache::size = 0;
-// Cache* Cache::instance = nullptr;
+
+#endif

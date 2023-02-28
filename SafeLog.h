@@ -38,6 +38,25 @@ public:
         logFile << uuidStr <<": Tunnel closed" << endl;
     }
 
+    void writeCacheHitLog(string uuidStr, string firstLine) {
+        checkValid();
+        lock_guard<mutex> lock(fileMutex);
+        logFile << uuidStr <<": in cache, valid" << endl;
+        logFile << uuidStr <<": Responding \"" << firstLine << "\"" << endl;
+    }
+
+    void writeCacheStoreSuccessLog(string uuidStr, string hint) {
+        checkValid();
+        lock_guard<mutex> lock(fileMutex);
+        logFile << uuidStr <<": cached, " << hint << endl;
+    }
+
+    void writeCacheStoreFailedLog(string uuidStr, string hint) {
+        checkValid();
+        lock_guard<mutex> lock(fileMutex);
+        logFile << uuidStr <<": not cacheable because " << hint << endl;
+    }
+
     string timeStap() {
         time_t t = time(nullptr);
         vector<char> buffer(80);

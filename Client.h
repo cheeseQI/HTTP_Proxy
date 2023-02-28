@@ -19,6 +19,7 @@
 #include <chrono>
 #include <ctime>
 #include "SafeLog.h"
+#include "Cache.h"
 using namespace std;
 
 class Client {
@@ -27,10 +28,13 @@ private:
     unique_ptr<Socket> connectSocketPtr;
     string uuidStr;
     shared_ptr<SafeLog>& logFile;
+    Cache& myCache;
 public:
     Client(int fd, struct addrinfo * address, string uuidStr, shared_ptr<SafeLog>& logFile);
     void contactWithRemoteServer(string request);
-    void contactWithRemoteClient(vector<char> sendBuffer);
+    void safeSendToClient(vector<char> sendBuffer);
+    void safeSendToServer(vector<char> sendBuffer);
     void contactInTunnel(string requestStr);
+    void tryCache(HttpRequest httpRequest, string cacheresponse);
 }; 
 #endif
