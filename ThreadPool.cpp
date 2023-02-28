@@ -1,13 +1,12 @@
 #include "ThreadPool.h"
 
 ThreadPool::ThreadPool(int threadNum, shared_ptr<SafeLog>& logFilePtr) : m_shutdown(false) {
-    //this->writeFds = writeFds;
     m_threads.reserve(threadNum);
     for (int i = 0; i < threadNum; i++) {
         m_threads.emplace_back([this, &logFilePtr] {
             thread_local uuid_t uuid;
             uuid_generate(uuid);
-            char uuidStr[37]; // 37 是 UUID 字符串形式的长度
+            char uuidStr[37];
             uuid_unparse(uuid, uuidStr);
             while (true) {
                 int fd = -1;
@@ -65,12 +64,11 @@ void ThreadPool::handleClient(int fd, string uuidStr, shared_ptr<SafeLog>& logFi
     HttpRequest httpRequest(requestStr);
     string method = httpRequest.getMethod();
     string hostName = httpRequest.getHost();
-    // todo: will handle it in the future
     struct addrinfo hints, *targetAddress;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_CANONNAME; // todo: still may delete, need double check
+    //hints.ai_flags = AI_CANONNAME; // todo: still may delete, need double check
     const char * port = (method == "CONNECT") ? "443" : "80"; 
     int status = getaddrinfo(hostName.c_str(), port, &hints, &targetAddress); 
     if (status != 0) {
@@ -83,8 +81,6 @@ void ThreadPool::handleClient(int fd, string uuidStr, shared_ptr<SafeLog>& logFi
     } else if (method == "GET" || method == "POST") {
         proxyClient.contactWithRemoteServer(requestStr);
     } 
-    //cout << "wired test" << endl;
-    //FD_CLR(fd, writeFds);
     close(fd);
     cout << "Client " << fd << " has disconnected." << endl;
 }

@@ -39,22 +39,12 @@ unique_ptr<Socket>& Server::getListenSocketPtr() {
 }
 
 void Server::run() {
-    // todo: only used for time-debugging, finally delete and also the select call tv param change to NULL
-    struct timeval tv;
-    tv.tv_sec = 200;
-    tv.tv_usec = 0;
     int listenFd = listenSocketPtr->getFd();
     while (true) {
-        // copy/write seperation, change apply to readin and then copy
-        // fd_set cpFds = readFds;
-        // start blocking select, any changes will be updated to read_fds
         int state;
-        if ((state = select(listenFd + 1, &readFds, NULL, NULL, &tv)) == -1) {
+        if ((state = select(listenFd + 1, &readFds, NULL, NULL, NULL)) == -1) {
             throw SelectException();
-        } else if (state == 0) {
-            std::cout << "Loop ended after time out" << std::endl;
-            break;
-        }
+        } 
         // if the change is from listen socket, create a service socket for acccepting
         struct sockaddr_storage clientAddr;
         socklen_t addrLen = sizeof(clientAddr);
@@ -68,8 +58,6 @@ void Server::run() {
             char ip[INET6_ADDRSTRLEN];
             inet_ntop(AF_INET, &(s->sin_addr), ip, INET_ADDRSTRLEN);
             cout << "successful connect to client ip: " << ip << " with port: " << port << endl;
-            //FD_SET(serviceFd, &readFds);
-            //fdMax = fdMax > serviceFd ? fdMax : serviceFd;
             threadPool->submit(serviceFd);
         }
     }

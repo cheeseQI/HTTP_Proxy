@@ -14,21 +14,17 @@
 #include "TaskQueue.h"
 #include "ExceptionHandler.h"
 #include "HttpRequest.h"
-// #include <boost/beast.hpp>
-// #include <boost/beast/http.hpp>
 #include "Client.h"
 #include "uuid/uuid.h"
 #include "SafeLog.h"
-// using namespace boost::beast;
 using namespace std;
 
 // todo: change to?
-const int THREAD_NUM = 12;
+const int THREAD_NUM = 50;
 
 
 class ThreadPool {
 private:
-    //fd_set * writeFds;
     vector<thread> m_threads;
     TaskQueue m_tasks;
     mutex m_cond_mutex;

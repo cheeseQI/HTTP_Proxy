@@ -11,7 +11,6 @@ int main(int argc, char *argv[]) {
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
     try {
-        // todo: should use "http" port
         int status;
         if ((status = getaddrinfo(NULL, "8080", &hints, &address)) != 0) {
             string serverInfo("proxy server: ");

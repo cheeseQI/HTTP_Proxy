@@ -109,7 +109,6 @@ void Client::contactWithRemoteServer(string request) {
             tryCache(httpRequest, string(cacheBuffer.begin(), cacheBuffer.end()));
             return;
         }
-        // update trailer(actually implement a queue)
         for (int i = min(0, dataLen - 4); i < dataLen; i ++) {
             // 0<-1, 1<-2, 2<-3, 3<-new
             for (int j = 0; j < 3; j ++) {
@@ -117,14 +116,12 @@ void Client::contactWithRemoteServer(string request) {
             }
             trailerMaintainer[3] = receiveBuffer[i];
         }
-        //cout << "data len: " << dataLen << endl;
         string trailer = string(trailerMaintainer.begin(), trailerMaintainer.end());
         if (trailer.compare("\r\n\r\n") == 0) {
             cout << "end chunk" << endl;
             tryCache(httpRequest, string(cacheBuffer.begin(), cacheBuffer.end()));
             return;
         }
-        //cout << "chunk send success with len: " << dataLen << endl;
         receiveBuffer.resize(65536);
     }
 }
@@ -159,30 +156,20 @@ void Client::contactInTunnel(string requestStr) {
     if ((status = send(serviceFd, confirm.c_str(), confirm.length(), 0)) == -1) {
         throw SendException(gai_strerror(status));
     }
-    fcntl(serviceFd, F_SETFL, O_NONBLOCK);
-    fcntl(connectFd, F_SETFL, O_NONBLOCK);
-    fd_set readFds;
-    FD_ZERO(&readFds);
+    // fcntl(serviceFd, F_SETFL, O_NONBLOCK);
+    // fcntl(connectFd, F_SETFL, O_NONBLOCK);
     int fdMax = max(connectFd, serviceFd);
-    FD_SET(connectFd, &readFds);
-    FD_SET(serviceFd, &readFds);
-    // struct timeval tv;
-    // tv.tv_sec = 8;
-    // tv.tv_usec = 0;
     while (true) {
-        //fd_set readFds;
-        //FD_ZERO(&readFds);
-        fd_set cpFds = readFds;
-        // int state;
-        if ((status = select(fdMax + 1, &cpFds, NULL, NULL, NULL)) == -1) {
+        fd_set readFds;
+        FD_ZERO(&readFds);
+        FD_SET(connectFd, &readFds);
+        FD_SET(serviceFd, &readFds);
+        if ((status = select(fdMax + 1, &readFds, NULL, NULL, NULL)) == -1) {
             throw SelectException();
-        } else if (status == 0) {
-            std::cout << "Loop ended after time out" << std::endl;
-            break;
-        }
+        } 
         vector<char> forwardBuffer(65536);
         int dataLen = 0;
-        if (FD_ISSET(serviceFd, &cpFds)) {
+        if (FD_ISSET(serviceFd, &readFds)) {
             cout << "receive from client " << endl;
             if ((dataLen = recv(serviceFd, &forwardBuffer.data()[0], forwardBuffer.size(), 0)) <= 0) {
                 //throw RecvException();
@@ -190,8 +177,6 @@ void Client::contactInTunnel(string requestStr) {
                 cout << "Tunnel closed by client" << endl;
                 break;
             }
-            //string str(forwardBuffer.begin(), forwardBuffer.begin() + dataLen);
-            //cout << str << endl;
             cout << "send to server  with len: " << dataLen << endl;
             if ((status = send(connectFd, &forwardBuffer.data()[0], dataLen, 0)) <= 0) {
                 logFile->writeTunnelClosedLog(uuidStr);
@@ -200,15 +185,14 @@ void Client::contactInTunnel(string requestStr) {
                 //throw SendException(gai_strerror(status));
             }
             cout << "after send to server (will not show the encrypted msg)" << endl;
-        } else if (FD_ISSET(connectFd, &cpFds)) {
+        } 
+        if (FD_ISSET(connectFd, &readFds)) {
             cout << "receive from server (will not show the encrypted msg)" << endl;
             if ((dataLen = recv(connectFd, &forwardBuffer.data()[0], forwardBuffer.size(), 0)) <= 0) {
                 logFile->writeTunnelClosedLog(uuidStr);
                 cout << "Tunnel closed by server" << endl;
                 break;
             }
-            // string str(forwardBuffer.begin(), forwardBuffer.begin() + dataLen);
-            // cout << str << endl;
             cout << "send to client (will not show the encrypted msg)" << endl;
             if ((status = send(serviceFd, &forwardBuffer.data()[0], dataLen, 0)) <= 0) {
                 //todo: sometimes crush here, only break may help but that's not a perfect solution
