@@ -12,7 +12,7 @@ int main(int argc, char *argv[]) {
     hints.ai_flags = AI_PASSIVE;
     try {
         int status;
-        if ((status = getaddrinfo(NULL, "8080", &hints, &address)) != 0) {
+        if ((status = getaddrinfo(NULL, "12345", &hints, &address)) != 0) {
             string serverInfo("proxy server: ");
             throw ProxyHostAddressException(serverInfo + gai_strerror(status));
         }  

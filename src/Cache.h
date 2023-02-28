@@ -45,7 +45,7 @@ private:
 public:
     static Cache* getInstance() {
         if (instance == nullptr) {
-            instance = new Cache(50);
+            instance = new Cache(100);
         }
         return instance;
     }
