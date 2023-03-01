@@ -1,5 +1,5 @@
-### Danger log of Project2 (HTTP in Proxy)
-### NetID: sq44, yw540
+# Danger log of Project2 (HTTP in Proxy)
+# NetID: sq44, yw540
 
 #### 1.Terminate when throws exception without any backups
 
