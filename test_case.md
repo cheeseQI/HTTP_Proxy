@@ -9,7 +9,7 @@ http://www.httpwatch.com/httpgallery/chunked/chunkedimage.aspx
 test for delay:
 http://httpbin.org/delay/5
 ### post
-https://httpbin.org/forms/post
+http://httpbin.org/forms/post
 
 
 ## 2. HTTPS Test Cases
