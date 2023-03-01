@@ -1,4 +1,4 @@
-version: '2'
+version: '3'
 
 services:
   proxy:
@@ -6,6 +6,7 @@ services:
     command: bash -c "./run.sh"
     volumes:
       - /var/log/erss:/var/log/erss:rw
+    image: hwk2-sq44_proxy:latest
     ports:
       - "12345:12345"
     tty: true
