@@ -1,7 +1,3 @@
-# hwk2-sq44&yw540
-
-
-
 ## what you will expect
 Hi, welcome to our proxy server world!
 - You can check the danger log and test cases in this directory.
